@@ -1,0 +1,8 @@
+/build/
+# Legacy output names must never be added again.
+/build-*/
+/dist/
+*.o
+*.a
+*.d
+__pycache__/

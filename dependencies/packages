@@ -1,0 +1,17 @@
+# System packages the build needs on the release and CI runners, read by
+# maelys-release adopt (apt names under [linux], brew names under [macos]).
+[linux]
+pkg-config
+python3
+perl
+libarchive-dev
+libext2fs-dev
+comerr-dev
+e2fsprogs
+libmbedtls-dev
+[macos]
+pkgconf
+libarchive
+e2fsprogs
+mbedtls
+python3

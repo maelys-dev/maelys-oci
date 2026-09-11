@@ -1,0 +1,24 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "store", "valid", "counts", "errors", "warnings"],
+  "properties": {
+    "schema": {"const": "maelys.warden.oci-store-verification/v1"},
+    "store": {"type": "string"},
+    "valid": {"type": "boolean", "description": "False when errors is not empty; the process then exits 2."},
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifacts", "blobBytes", "blobs", "closures", "leases"],
+      "properties": {
+        "artifacts": {"type": "integer", "minimum": 0},
+        "blobBytes": {"type": "integer", "minimum": 0},
+        "blobs": {"type": "integer", "minimum": 0},
+        "closures": {"type": "integer", "minimum": 0},
+        "leases": {"type": "integer", "minimum": 0}
+      }
+    },
+    "errors": {"type": "array", "items": {"type": "string"}},
+    "warnings": {"type": "array", "items": {"type": "string"}}
+  }
+}

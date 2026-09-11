@@ -1,0 +1,9 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["archive", "destination"],
+  "properties": {
+    "archive": {"type": "string"},
+    "destination": {"type": "string"}
+  }
+}

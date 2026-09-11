@@ -1,0 +1,24 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "source", "manifests"],
+  "properties": {
+    "schema": {"const": "maelys.warden.oci-inspection/v1"},
+    "source": {"type": "string", "description": "Canonical path of the inspected layout directory or archive."},
+    "manifests": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["digest", "platform", "configDigest", "compressedLayerBytes", "layerCount"],
+        "properties": {
+          "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "platform": {"type": "string", "description": "OS/ARCH recorded by the image config."},
+          "configDigest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "compressedLayerBytes": {"type": "integer", "minimum": 0},
+          "layerCount": {"type": "integer", "minimum": 1}
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,24 @@
+name: ci
+
+# Created by maelys-release v0.5.0 (0.5.0) and owned by this repository: add jobs
+# next to check, keep check on the socle version of release.yml.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    uses: maelys-dev/maelys-release/.github/workflows/check-product.yml@15d4bac77af504dbe746ede23e1fe11612aab06a # v0.33.0
+    with:
+      product: maelys-oci
+      docs_contract: true
+      check_command: |
+        make check
+        make analyze
+      sanitizer_command: |
+        make asan-ubsan
+        make fuzz

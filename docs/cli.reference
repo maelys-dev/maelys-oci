@@ -1,0 +1,12 @@
+# What the release socle needs to regenerate docs/cli.md and
+# docs/cli-contract.json. unpack-rootfs is Linux-only; the flag below
+# describes it as available on every host in the committed reference.
+
+[build]
+build/linux-x86_64/release/bin
+
+[programs]
+maelys-oci
+
+[flags]
+--neutral-availability unpack-rootfs

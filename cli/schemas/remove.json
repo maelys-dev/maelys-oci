@@ -1,0 +1,14 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["mode", "changed", "reference", "digest", "platform", "store", "artifact"],
+  "properties": {
+    "mode": {"enum": ["plan", "apply"]},
+    "changed": {"type": "boolean"},
+    "reference": {"type": "string", "pattern": "^oci@sha256:[0-9a-f]{64}$"},
+    "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "platform": {"type": "string"},
+    "store": {"type": "string"},
+    "artifact": {"type": "string", "description": "Artifact directory that is, or would be, retired."}
+  }
+}

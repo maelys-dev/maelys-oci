@@ -1,0 +1,13 @@
+prefix=@PREFIX@
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+commandsdir=${prefix}/share/maelys/commands
+
+Name: maelys-oci
+Description: Bounded OCI acquisition and immutable artifact store
+Version: @VERSION@
+Requires.private: libarchive ext2fs com_err
+Libs: -L${libdir} -lmaelys-oci
+Libs.private: @PLATFORM_PRIVATE_LIBS@ -lmaelys_http_tls_mbedtls -lmaelys_http_client -lmaelys_http -lmaelys-json -lmaelys_sys @HTTP_LIBS@ -pthread
+Cflags: -I${includedir}

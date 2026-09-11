@@ -1,0 +1,44 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "store", "mode", "changed", "valid", "graceSeconds", "counts", "errors", "warnings", "candidates", "selectedBytes", "retired"],
+  "properties": {
+    "schema": {"const": "maelys.warden.oci-store-verification/v1"},
+    "store": {"type": "string"},
+    "mode": {"enum": ["plan", "apply"]},
+    "changed": {"type": "boolean"},
+    "valid": {"type": "boolean", "description": "False when the store has integrity errors; nothing is retired and the process exits 2."},
+    "graceSeconds": {"type": "integer", "minimum": 0},
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifacts", "blobBytes", "blobs", "closures", "leases"],
+      "properties": {
+        "artifacts": {"type": "integer", "minimum": 0},
+        "blobBytes": {"type": "integer", "minimum": 0},
+        "blobs": {"type": "integer", "minimum": 0},
+        "closures": {"type": "integer", "minimum": 0},
+        "leases": {"type": "integer", "minimum": 0}
+      }
+    },
+    "errors": {"type": "array", "items": {"type": "string"}},
+    "warnings": {"type": "array", "items": {"type": "string"}},
+    "candidates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["kind", "path"],
+        "properties": {
+          "kind": {"enum": ["blob", "lease", "temporary"]},
+          "path": {"type": "string", "description": "Path relative to the store root."},
+          "digest": {"type": "string"},
+          "bytes": {"type": "integer", "minimum": 0},
+          "device": {"type": "integer"},
+          "inode": {"type": "integer"}
+        }
+      }
+    },
+    "selectedBytes": {"type": "integer", "minimum": 0},
+    "retired": {"type": "integer", "minimum": 0}
+  }
+}

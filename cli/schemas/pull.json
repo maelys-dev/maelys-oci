@@ -1,0 +1,93 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "reference",
+    "registry",
+    "repository",
+    "changed",
+    "manifestDigest",
+    "configDigest",
+    "platform",
+    "store",
+    "artifact",
+    "requestedReference",
+    "requestedDigest",
+    "resolvedDigest",
+    "artifactDigest",
+    "cacheHit",
+    "blobCount",
+    "blobBytes",
+    "downloadedBlobs",
+    "cachedBlobs"
+  ],
+  "properties": {
+    "reference": {
+      "type": "string",
+      "description": "REGISTRY/REPOSITORY@sha256:HEX of the imported manifest."
+    },
+    "registry": {
+      "type": "string"
+    },
+    "repository": {
+      "type": "string"
+    },
+    "changed": {
+      "type": "boolean"
+    },
+    "manifestDigest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "configDigest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "platform": {
+      "enum": [
+        "linux/arm64",
+        "linux/amd64"
+      ]
+    },
+    "store": {
+      "type": "string"
+    },
+    "artifact": {
+      "type": "string"
+    },
+    "requestedReference": {
+      "type": "string"
+    },
+    "requestedDigest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "resolvedDigest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "artifactDigest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "cacheHit": {
+      "type": "boolean"
+    },
+    "blobCount": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "blobBytes": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "downloadedBlobs": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "cachedBlobs": {
+      "type": "integer",
+      "minimum": 0
+    }
+  }
+}

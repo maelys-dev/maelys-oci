@@ -1,0 +1,9 @@
+{
+  "schema": "maelys.cli-extension/v1",
+  "command": "oci",
+  "executable": "@EXECUTABLE@",
+  "cliApi": 1,
+  "version": "@VERSION@",
+  "summary": "Acquire, materialize and manage verified OCI images",
+  "sha256": "@SHA256@"
+}

@@ -1,0 +1,21 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["mode", "changed", "reference", "manifestDigest", "configDigest", "platform", "store", "artifact", "precondition"],
+  "properties": {
+    "mode": {"enum": ["plan", "apply"]},
+    "changed": {"type": "boolean", "description": "True when a new artifact was published."},
+    "reference": {"type": "string", "pattern": "^oci@sha256:[0-9a-f]{64}$"},
+    "manifestDigest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "configDigest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "platform": {"type": "string"},
+    "store": {"type": "string", "description": "Absolute store root."},
+    "artifact": {"type": "string", "description": "Absolute artifact directory holding root.ext4, rootfs.tar, artifact.json and artifact.seal."},
+    "precondition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifactExists"],
+      "properties": {"artifactExists": {"type": "boolean"}}
+    }
+  }
+}

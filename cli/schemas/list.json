@@ -1,0 +1,22 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["count", "records"],
+  "properties": {
+    "count": {"type": "integer", "minimum": 0},
+    "records": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["reference", "digest", "platform", "metadata"],
+        "properties": {
+          "reference": {"type": "string", "pattern": "^oci@sha256:[0-9a-f]{64}$"},
+          "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "platform": {"type": "string"},
+          "metadata": {"type": "object", "description": "The immutable artifact.json document (maelys.oci-artifact/v7)."}
+        }
+      }
+    }
+  }
+}

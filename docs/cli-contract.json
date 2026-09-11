@@ -1,0 +1,1455 @@
+{
+  "contract": "agent-cli/v2",
+  "programs": {
+    "maelys-oci": {
+      "cliApi": 1,
+      "commands": [
+        {
+          "available": true,
+          "effect": "read",
+          "exitCodes": {
+            "0": "command completed",
+            "1": "execution failed",
+            "2": "valid report with violations"
+          },
+          "external": false,
+          "hidden": false,
+          "id": "help",
+          "input": {
+            "constraints": [],
+            "operands": [
+              {
+                "name": "COMMAND_ID",
+                "required": false,
+                "summary": "Stable command identifier whose help is shown.",
+                "variadic": false
+              }
+            ],
+            "options": [],
+            "passthrough": false,
+            "synopsis": "help [COMMAND_ID] | --help"
+          },
+          "outputMode": "json-envelope",
+          "outputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "commands": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "text": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "text",
+              "commands"
+            ],
+            "type": "object"
+          },
+          "pattern": [
+            "help"
+          ],
+          "purpose": "Show the generated CLI guide or one command's help.",
+          "usage": "help [COMMAND_ID] | --help"
+        },
+        {
+          "available": true,
+          "effect": "read",
+          "exitCodes": {
+            "0": "command completed",
+            "1": "execution failed",
+            "2": "valid report with violations"
+          },
+          "external": false,
+          "hidden": false,
+          "id": "version",
+          "input": {
+            "constraints": [],
+            "operands": [],
+            "options": [],
+            "passthrough": false,
+            "synopsis": "version | --version"
+          },
+          "outputMode": "json-envelope",
+          "outputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "cliApi": {
+                "type": "integer"
+              },
+              "contract": {
+                "const": "agent-cli/v2"
+              },
+              "framework": {
+                "type": "string"
+              },
+              "product": {
+                "type": "string"
+              },
+              "program": {
+                "type": "string"
+              },
+              "version": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "product",
+              "program",
+              "version",
+              "contract",
+              "cliApi",
+              "framework"
+            ],
+            "type": "object"
+          },
+          "pattern": [
+            "version"
+          ],
+          "purpose": "Return product identity.",
+          "usage": "version | --version"
+        },
+        {
+          "available": true,
+          "effect": "read",
+          "exitCodes": {
+            "0": "command completed",
+            "1": "execution failed",
+            "2": "valid report with violations"
+          },
+          "external": false,
+          "hidden": false,
+          "id": "describe",
+          "input": {
+            "constraints": [
+              {
+                "kind": "requires",
+                "options": [
+                  "--prefix",
+                  "--summary"
+                ]
+              }
+            ],
+            "operands": [
+              {
+                "name": "COMMAND_ID",
+                "required": false,
+                "summary": "Stable command identifier returned by the catalog.",
+                "variadic": false
+              }
+            ],
+            "options": [
+              {
+                "conflictsWith": [],
+                "long": "--summary",
+                "repeatable": false,
+                "required": false,
+                "requires": [],
+                "summary": "Return the compact command inventory without output schemas."
+              },
+              {
+                "argument": {
+                  "name": "PREFIX",
+                  "pattern": "^[a-z]([a-z0-9.-]*[a-z0-9-])?$",
+                  "type": "string"
+                },
+                "conflictsWith": [
+                  "COMMAND_ID"
+                ],
+                "long": "--prefix",
+                "repeatable": false,
+                "required": false,
+                "requires": [
+                  "--summary"
+                ],
+                "summary": "Restrict the summary to one command namespace: the command named PREFIX and every command whose identifier starts with PREFIX followed by a dot."
+              }
+            ],
+            "passthrough": false,
+            "synopsis": "describe [COMMAND_ID] [--summary] [--prefix PREFIX]"
+          },
+          "outputMode": "json-envelope",
+          "outputSchema": {
+            "additionalProperties": true,
+            "description": "Command catalog, summary or single descriptor.",
+            "required": [
+              "schemaVersion",
+              "kind",
+              "program",
+              "commands"
+            ],
+            "type": "object"
+          },
+          "pattern": [
+            "describe"
+          ],
+          "purpose": "Return the machine-readable catalog, summary or one descriptor.",
+          "usage": "describe [COMMAND_ID] [--summary] [--prefix PREFIX]"
+        },
+        {
+          "available": true,
+          "effect": "read",
+          "exitCodes": {
+            "0": "command completed",
+            "1": "execution failed",
+            "2": "valid report with violations"
+          },
+          "external": false,
+          "hidden": false,
+          "id": "completion",
+          "input": {
+            "constraints": [],
+            "operands": [
+              {
+                "choices": [
+                  "bash",
+                  "zsh",
+                  "fish"
+                ],
+                "name": "SHELL",
+                "required": true,
+                "summary": "Shell whose completion script is printed.",
+                "type": "choice",
+                "variadic": false
+              }
+            ],
+            "options": [],
+            "passthrough": false,
+            "synopsis": "completion SHELL"
+          },
+          "outputMode": "json-envelope",
+          "outputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "script": {
+                "type": "string"
+              },
+              "shell": {
+                "enum": [
+                  "bash",
+                  "zsh",
+                  "fish"
+                ]
+              }
+            },
+            "required": [
+              "shell",
+              "script"
+            ],
+            "type": "object"
+          },
+          "pattern": [
+            "completion"
+          ],
+          "purpose": "Print the shell completion script generated from the catalog.",
+          "usage": "completion SHELL"
+        },
+        {
+          "available": true,
+          "effect": "read",
+          "exitCodes": {
+            "0": "command completed",
+            "1": "execution failed",
+            "2": "valid report with violations"
+          },
+          "external": false,
+          "hidden": true,
+          "id": "complete.candidates",
+          "input": {
+            "constraints": [],
+            "operands": [
+              {
+                "name": "WORDS",
+                "required": false,
+                "summary": "Command line words after the program name; the last one is the prefix being completed.",
+                "variadic": true
+              }
+            ],
+            "options": [],
+            "passthrough": false,
+            "synopsis": "__complete [WORDS...]"
+          },
+          "outputMode": "json-records",
+          "outputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "records": {
+                "items": {
+                  "required": [
+                    "word"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "count",
+              "records"
+            ],
+            "type": "object"
+          },
+          "pattern": [
+            "__complete"
+          ],
+          "purpose": "Return completion candidates for a partial command line.",
+          "usage": "__complete [WORDS...]"
+        },
+        {
+          "available": true,
+          "effect": "read",
+          "exitCodes": {
+            "0": "command completed",
+            "1": "execution failed",
+            "2": "valid report with violations"
+          },
+          "external": false,
+          "hidden": false,
+          "id": "inspect",
+          "input": {
+            "constraints": [],
+            "operands": [
+              {
+                "name": "SOURCE",
+                "required": true,
+                "summary": "OCI layout directory or tar archive with oci-layout and index.json.",
+                "variadic": false
+              }
+            ],
+            "options": [],
+            "passthrough": false,
+            "synopsis": "inspect SOURCE"
+          },
+          "outputMode": "json-envelope",
+          "outputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "manifests": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "compressedLayerBytes": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "configDigest": {
+                      "pattern": "^sha256:[0-9a-f]{64}$",
+                      "type": "string"
+                    },
+                    "digest": {
+                      "pattern": "^sha256:[0-9a-f]{64}$",
+                      "type": "string"
+                    },
+                    "layerCount": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "platform": {
+                      "description": "OS/ARCH recorded by the image config.",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "digest",
+                    "platform",
+                    "configDigest",
+                    "compressedLayerBytes",
+                    "layerCount"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "schema": {
+                "const": "maelys.warden.oci-inspection/v1"
+              },
+              "source": {
+                "description": "Canonical path of the inspected layout directory or archive.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "schema",
+              "source",
+              "manifests"
+            ],
+            "type": "object"
+          },
+          "pattern": [
+            "inspect"
+          ],
+          "purpose": "List the runnable manifests of an OCI layout directory or archive.",
+          "usage": "inspect SOURCE"
+        },
+        {
+          "available": true,
+          "effect": {
+            "apply": "apply",
+            "plan": "preview"
+          },
+          "exitCodes": {
+            "0": "command completed",
+            "1": "execution failed",
+            "2": "valid report with violations"
+          },
+          "external": false,
+          "hidden": false,
+          "id": "import",
+          "input": {
+            "constraints": [],
+            "operands": [
+              {
+                "name": "SOURCE",
+                "required": true,
+                "summary": "OCI layout directory or tar archive with oci-layout and index.json.",
+                "variadic": false
+              }
+            ],
+            "options": [
+              {
+                "argument": {
+                  "name": "DIRECTORY",
+                  "type": "absolute-path"
+                },
+                "conflictsWith": [],
+                "long": "--store",
+                "repeatable": false,
+                "required": false,
+                "requires": [],
+                "summary": "Private store root; defaults to $MAELYS_OCI_STORE or $XDG_DATA_HOME/maelys-oci. Created on --apply when absent."
+              },
+              {
+                "argument": {
+                  "name": "OS/ARCH",
+                  "type": "string"
+                },
+                "conflictsWith": [],
+                "long": "--platform",
+                "repeatable": false,
+                "required": false,
+                "requires": [],
+                "summary": "Select the manifest of this platform when the source has several."
+              },
+              {
+                "argument": {
+                  "algorithms": [
+                    "sha256"
+                  ],
+                  "name": "sha256:HEX",
+                  "type": "digest"
+                },
+                "conflictsWith": [],
+                "long": "--digest",
+                "repeatable": false,
+                "required": false,
+                "requires": [],
+                "summary": "Select the manifest with this digest when the source has several."
+              },
+              {
+                "conflictsWith": [],
+                "long": "--apply",
+                "repeatable": false,
+                "required": false,
+                "requires": [],
+                "summary": "Apply the reviewed transaction; omission returns a read-only plan."
+              }
+            ],
+            "passthrough": false,
+            "synopsis": "import SOURCE [--store DIRECTORY] [--platform OS/ARCH] [--digest sha256:HEX] [--apply]"
+          },
+          "outputMode": "json-envelope",
+          "outputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "artifact": {
+                "description": "Absolute artifact directory holding root.ext4, rootfs.tar, artifact.json and artifact.seal.",
+                "type": "string"
+              },
+              "changed": {
+                "description": "True when a new artifact was published.",
+                "type": "boolean"
+              },
+              "configDigest": {
+                "pattern": "^sha256:[0-9a-f]{64}$",
+                "type": "string"
+              },
+              "manifestDigest": {
+                "pattern": "^sha256:[0-9a-f]{64}$",
+                "type": "string"
+              },
+              "mode": {
+                "enum": [
+                  "plan",
+                  "apply"
+                ]
+              },
+              "platform": {
+                "type": "string"
+              },
+              "precondition": {
+                "additionalProperties": false,
+                "properties": {
+                  "artifactExists": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "artifactExists"
+                ],
+                "type": "object"
+              },
+              "reference": {
+                "pattern": "^oci@sha256:[0-9a-f]{64}$",
+                "type": "string"
+              },
+              "store": {
+                "description": "Absolute store root.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "mode",
+              "changed",
+              "reference",
+              "manifestDigest",
+              "configDigest",
+              "platform",
+              "store",
+              "artifact",
+              "precondition"
+            ],
+            "type": "object"
+          },
+          "pattern": [
+            "import"
+          ],
+          "purpose": "Materialize one manifest of an OCI layout into the immutable store.",
+          "usage": "import SOURCE [--store DIRECTORY] [--platform OS/ARCH] [--digest sha256:HEX] [--apply]"
+        },
+        {
+          "available": true,
+          "effect": "execute",
+          "exitCodes": {
+            "0": "command completed",
+            "1": "execution failed",
+            "2": "valid report with violations"
+          },
+          "external": false,
+          "hidden": false,
+          "id": "pull",
+          "input": {
+            "constraints": [
+              {
+                "kind": "at-most-one",
+                "options": [
+                  "--token-file",
+                  "--docker-config"
+                ]
+              },
+              {
+                "kind": "at-most-one",
+                "options": [
+                  "--docker-config",
+                  "--token-file"
+                ]
+              }
+            ],
+            "operands": [
+              {
+                "name": "REFERENCE",
+                "required": true,
+                "summary": "Immutable image reference REGISTRY/REPOSITORY@sha256:HEX.",
+                "variadic": false
+              }
+            ],
+            "options": [
+              {
+                "argument": {
+                  "choices": [
+                    "linux/arm64",
+                    "linux/amd64"
+                  ],
+                  "name": "VALUE",
+                  "type": "choice"
+                },
+                "conflictsWith": [],
+                "long": "--platform",
+                "repeatable": false,
+                "required": false,
+                "requires": [],
+                "summary": "Platform to select from a multi-platform index."
+              },
+              {
+                "argument": {
+                  "name": "DIRECTORY",
+                  "type": "absolute-path"
+                },
+                "conflictsWith": [],
+                "long": "--store",
+                "repeatable": false,
+                "required": false,
+                "requires": [],
+                "summary": "Private store root; defaults to $MAELYS_OCI_STORE or $XDG_DATA_HOME/maelys-oci. Created when absent."
+              },
+              {
+                "argument": {
+                  "name": "FILE",
+                  "type": "absolute-path"
+                },
+                "conflictsWith": [],
+                "long": "--ca-file",
+                "repeatable": false,
+                "required": false,
+                "requires": [],
+                "summary": "CA bundle; defaults to SSL_CERT_FILE or the system bundle."
+              },
+              {
+                "argument": {
+                  "name": "FILE",
+                  "type": "absolute-path"
+                },
+                "conflictsWith": [
+                  "--docker-config"
+                ],
+                "long": "--token-file",
+                "repeatable": false,
+                "required": false,
+                "requires": [],
+                "summary": "Private file holding a registry bearer token."
+              },
+              {
+                "argument": {
+                  "name": "FILE",
+                  "type": "absolute-path"
+                },
+                "conflictsWith": [
+                  "--token-file"
+                ],
+                "long": "--docker-config",
+                "repeatable": false,
+                "required": false,
+                "requires": [],
+                "summary": "Private Docker config.json with static auths; credential helpers are refused."
+              },
+              {
+                "argument": {
+                  "maximum": 86400000,
+                  "minimum": 1,
+                  "name": "N",
+                  "type": "unsigned"
+                },
+                "conflictsWith": [],
+                "default": "300000",
+                "long": "--timeout-ms",
+                "repeatable": false,
+                "required": false,
+                "requires": [],
+                "summary": "Global acquisition deadline in milliseconds."
+              }
+            ],
+            "passthrough": false,
+            "synopsis": "pull REFERENCE [--platform linux/arm64|linux/amd64] [--store DIRECTORY] [--ca-file FILE] [--token-file FILE] [--docker-config FILE] [--timeout-ms N]"
+          },
+          "outputMode": "json-envelope",
+          "outputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "artifact": {
+                "type": "string"
+              },
+              "artifactDigest": {
+                "pattern": "^sha256:[0-9a-f]{64}$",
+                "type": "string"
+              },
+              "blobBytes": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "blobCount": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "cacheHit": {
+                "type": "boolean"
+              },
+              "cachedBlobs": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "changed": {
+                "type": "boolean"
+              },
+              "configDigest": {
+                "pattern": "^sha256:[0-9a-f]{64}$",
+                "type": "string"
+              },
+              "downloadedBlobs": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "manifestDigest": {
+                "pattern": "^sha256:[0-9a-f]{64}$",
+                "type": "string"
+              },
+              "platform": {
+                "enum": [
+                  "linux/arm64",
+                  "linux/amd64"
+                ]
+              },
+              "reference": {
+                "description": "REGISTRY/REPOSITORY@sha256:HEX of the imported manifest.",
+                "type": "string"
+              },
+              "registry": {
+                "type": "string"
+              },
+              "repository": {
+                "type": "string"
+              },
+              "requestedDigest": {
+                "pattern": "^sha256:[0-9a-f]{64}$",
+                "type": "string"
+              },
+              "requestedReference": {
+                "type": "string"
+              },
+              "resolvedDigest": {
+                "pattern": "^sha256:[0-9a-f]{64}$",
+                "type": "string"
+              },
+              "store": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "reference",
+              "registry",
+              "repository",
+              "changed",
+              "manifestDigest",
+              "configDigest",
+              "platform",
+              "store",
+              "artifact",
+              "requestedReference",
+              "requestedDigest",
+              "resolvedDigest",
+              "artifactDigest",
+              "cacheHit",
+              "blobCount",
+              "blobBytes",
+              "downloadedBlobs",
+              "cachedBlobs"
+            ],
+            "type": "object"
+          },
+          "pattern": [
+            "pull"
+          ],
+          "purpose": "Acquire an image from a registry over HTTPS and materialize it.",
+          "usage": "pull REFERENCE [--platform linux/arm64|linux/amd64] [--store DIRECTORY] [--ca-file FILE] [--token-file FILE] [--docker-config FILE] [--timeout-ms N]"
+        },
+        {
+          "available": true,
+          "effect": "read",
+          "exitCodes": {
+            "0": "command completed",
+            "1": "execution failed",
+            "2": "valid report with violations"
+          },
+          "external": false,
+          "hidden": false,
+          "id": "list",
+          "input": {
+            "constraints": [],
+            "operands": [],
+            "options": [
+              {
+                "argument": {
+                  "name": "DIRECTORY",
+                  "type": "absolute-path"
+                },
+                "conflictsWith": [],
+                "long": "--store",
+                "repeatable": false,
+                "required": false,
+                "requires": [],
+                "summary": "Private store root; defaults to $MAELYS_OCI_STORE or $XDG_DATA_HOME/maelys-oci."
+              }
+            ],
+            "passthrough": false,
+            "synopsis": "list [--store DIRECTORY]"
+          },
+          "outputMode": "json-records",
+          "outputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "count": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "records": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "digest": {
+                      "pattern": "^sha256:[0-9a-f]{64}$",
+                      "type": "string"
+                    },
+                    "metadata": {
+                      "description": "The immutable artifact.json document (maelys.oci-artifact/v7).",
+                      "type": "object"
+                    },
+                    "platform": {
+                      "type": "string"
+                    },
+                    "reference": {
+                      "pattern": "^oci@sha256:[0-9a-f]{64}$",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "reference",
+                    "digest",
+                    "platform",
+                    "metadata"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "count",
+              "records"
+            ],
+            "type": "object"
+          },
+          "pattern": [
+            "list"
+          ],
+          "purpose": "List the artifacts published in the store.",
+          "usage": "list [--store DIRECTORY]"
+        },
+        {
+          "available": true,
+          "effect": "read",
+          "exitCodes": {
+            "0": "command completed",
+            "1": "execution failed",
+            "2": "valid report with violations"
+          },
+          "external": false,
+          "hidden": false,
+          "id": "verify",
+          "input": {
+            "constraints": [],
+            "operands": [],
+            "options": [
+              {
+                "argument": {
+                  "name": "DIRECTORY",
+                  "type": "absolute-path"
+                },
+                "conflictsWith": [],
+                "long": "--store",
+                "repeatable": false,
+                "required": false,
+                "requires": [],
+                "summary": "Private store root; defaults to $MAELYS_OCI_STORE or $XDG_DATA_HOME/maelys-oci."
+              }
+            ],
+            "passthrough": false,
+            "synopsis": "verify [--store DIRECTORY]"
+          },
+          "outputMode": "json-envelope",
+          "outputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "counts": {
+                "additionalProperties": false,
+                "properties": {
+                  "artifacts": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "blobBytes": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "blobs": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "closures": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "leases": {
+                    "minimum": 0,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "artifacts",
+                  "blobBytes",
+                  "blobs",
+                  "closures",
+                  "leases"
+                ],
+                "type": "object"
+              },
+              "errors": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "schema": {
+                "const": "maelys.warden.oci-store-verification/v1"
+              },
+              "store": {
+                "type": "string"
+              },
+              "valid": {
+                "description": "False when errors is not empty; the process then exits 2.",
+                "type": "boolean"
+              },
+              "warnings": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "schema",
+              "store",
+              "valid",
+              "counts",
+              "errors",
+              "warnings"
+            ],
+            "type": "object"
+          },
+          "pattern": [
+            "verify"
+          ],
+          "purpose": "Verify every blob, closure, artifact and lease of the store; exit 2 on integrity errors.",
+          "usage": "verify [--store DIRECTORY]"
+        },
+        {
+          "available": true,
+          "effect": {
+            "apply": "apply",
+            "plan": "preview"
+          },
+          "exitCodes": {
+            "0": "command completed",
+            "1": "execution failed",
+            "2": "valid report with violations"
+          },
+          "external": false,
+          "hidden": false,
+          "id": "gc",
+          "input": {
+            "constraints": [],
+            "operands": [],
+            "options": [
+              {
+                "argument": {
+                  "name": "DIRECTORY",
+                  "type": "absolute-path"
+                },
+                "conflictsWith": [],
+                "long": "--store",
+                "repeatable": false,
+                "required": false,
+                "requires": [],
+                "summary": "Private store root; defaults to $MAELYS_OCI_STORE or $XDG_DATA_HOME/maelys-oci."
+              },
+              {
+                "argument": {
+                  "maximum": 18446744073709551615,
+                  "minimum": 0,
+                  "name": "SECONDS",
+                  "type": "unsigned"
+                },
+                "conflictsWith": [],
+                "default": "86400",
+                "long": "--grace-seconds",
+                "repeatable": false,
+                "required": false,
+                "requires": [],
+                "summary": "Age a stale lease or abandoned temporary state must reach before collection."
+              },
+              {
+                "conflictsWith": [],
+                "long": "--apply",
+                "repeatable": false,
+                "required": false,
+                "requires": [],
+                "summary": "Apply the reviewed transaction; omission returns a read-only plan."
+              }
+            ],
+            "passthrough": false,
+            "synopsis": "gc [--store DIRECTORY] [--grace-seconds SECONDS] [--apply]"
+          },
+          "outputMode": "json-envelope",
+          "outputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "candidates": {
+                "items": {
+                  "properties": {
+                    "bytes": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "device": {
+                      "type": "integer"
+                    },
+                    "digest": {
+                      "type": "string"
+                    },
+                    "inode": {
+                      "type": "integer"
+                    },
+                    "kind": {
+                      "enum": [
+                        "blob",
+                        "lease",
+                        "temporary"
+                      ]
+                    },
+                    "path": {
+                      "description": "Path relative to the store root.",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "path"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "changed": {
+                "type": "boolean"
+              },
+              "counts": {
+                "additionalProperties": false,
+                "properties": {
+                  "artifacts": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "blobBytes": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "blobs": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "closures": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "leases": {
+                    "minimum": 0,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "artifacts",
+                  "blobBytes",
+                  "blobs",
+                  "closures",
+                  "leases"
+                ],
+                "type": "object"
+              },
+              "errors": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "graceSeconds": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "mode": {
+                "enum": [
+                  "plan",
+                  "apply"
+                ]
+              },
+              "retired": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "schema": {
+                "const": "maelys.warden.oci-store-verification/v1"
+              },
+              "selectedBytes": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "store": {
+                "type": "string"
+              },
+              "valid": {
+                "description": "False when the store has integrity errors; nothing is retired and the process exits 2.",
+                "type": "boolean"
+              },
+              "warnings": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "schema",
+              "store",
+              "mode",
+              "changed",
+              "valid",
+              "graceSeconds",
+              "counts",
+              "errors",
+              "warnings",
+              "candidates",
+              "selectedBytes",
+              "retired"
+            ],
+            "type": "object"
+          },
+          "pattern": [
+            "gc"
+          ],
+          "purpose": "Collect unreachable blobs, stale leases and abandoned temporary state.",
+          "usage": "gc [--store DIRECTORY] [--grace-seconds SECONDS] [--apply]"
+        },
+        {
+          "available": true,
+          "effect": {
+            "apply": "apply",
+            "plan": "preview"
+          },
+          "exitCodes": {
+            "0": "command completed",
+            "1": "execution failed",
+            "2": "valid report with violations"
+          },
+          "external": false,
+          "hidden": false,
+          "id": "remove",
+          "input": {
+            "constraints": [],
+            "operands": [
+              {
+                "name": "REFERENCE",
+                "required": true,
+                "summary": "Immutable reference ending with @sha256:HEX, or a bare sha256:HEX.",
+                "variadic": false
+              }
+            ],
+            "options": [
+              {
+                "argument": {
+                  "name": "OS/ARCH",
+                  "type": "string"
+                },
+                "conflictsWith": [],
+                "long": "--platform",
+                "repeatable": false,
+                "required": false,
+                "requires": [],
+                "summary": "Platform of the artifact when the manifest has several."
+              },
+              {
+                "argument": {
+                  "name": "DIRECTORY",
+                  "type": "absolute-path"
+                },
+                "conflictsWith": [],
+                "long": "--store",
+                "repeatable": false,
+                "required": false,
+                "requires": [],
+                "summary": "Private store root; defaults to $MAELYS_OCI_STORE or $XDG_DATA_HOME/maelys-oci."
+              },
+              {
+                "conflictsWith": [],
+                "long": "--apply",
+                "repeatable": false,
+                "required": false,
+                "requires": [],
+                "summary": "Apply the reviewed transaction; omission returns a read-only plan."
+              }
+            ],
+            "passthrough": false,
+            "synopsis": "remove REFERENCE [--platform OS/ARCH] [--store DIRECTORY] [--apply]"
+          },
+          "outputMode": "json-envelope",
+          "outputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "artifact": {
+                "description": "Artifact directory that is, or would be, retired.",
+                "type": "string"
+              },
+              "changed": {
+                "type": "boolean"
+              },
+              "digest": {
+                "pattern": "^sha256:[0-9a-f]{64}$",
+                "type": "string"
+              },
+              "mode": {
+                "enum": [
+                  "plan",
+                  "apply"
+                ]
+              },
+              "platform": {
+                "type": "string"
+              },
+              "reference": {
+                "pattern": "^oci@sha256:[0-9a-f]{64}$",
+                "type": "string"
+              },
+              "store": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "mode",
+              "changed",
+              "reference",
+              "digest",
+              "platform",
+              "store",
+              "artifact"
+            ],
+            "type": "object"
+          },
+          "pattern": [
+            "remove"
+          ],
+          "purpose": "Retire one artifact and its source closure unless a lease holds it.",
+          "usage": "remove REFERENCE [--platform OS/ARCH] [--store DIRECTORY] [--apply]"
+        },
+        {
+          "available": true,
+          "effect": "execute",
+          "exitCodes": {
+            "0": "command completed",
+            "1": "execution failed",
+            "2": "valid report with violations"
+          },
+          "external": false,
+          "hidden": false,
+          "id": "unpack-rootfs",
+          "input": {
+            "constraints": [],
+            "operands": [
+              {
+                "name": "ARCHIVE",
+                "required": true,
+                "summary": "Sealed rootfs.tar produced by import.",
+                "type": "absolute-path",
+                "variadic": false
+              },
+              {
+                "name": "DESTINATION",
+                "required": true,
+                "summary": "Empty directory with mode 0700 owned by the caller.",
+                "type": "absolute-path",
+                "variadic": false
+              }
+            ],
+            "options": [],
+            "passthrough": false,
+            "synopsis": "unpack-rootfs ARCHIVE DESTINATION"
+          },
+          "outputMode": "json-envelope",
+          "outputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "archive": {
+                "type": "string"
+              },
+              "destination": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "archive",
+              "destination"
+            ],
+            "type": "object"
+          },
+          "pattern": [
+            "unpack-rootfs"
+          ],
+          "purpose": "Extract a sealed portable root archive.",
+          "usage": "unpack-rootfs ARCHIVE DESTINATION"
+        }
+      ],
+      "contract": "agent-cli/v2",
+      "globalOptions": [
+        {
+          "argument": {
+            "choices": [
+              "text",
+              "json",
+              "jsonl"
+            ],
+            "name": "VALUE",
+            "type": "choice"
+          },
+          "conflictsWith": [],
+          "default": "text",
+          "long": "--format",
+          "repeatable": false,
+          "required": false,
+          "requires": [],
+          "summary": "Select text for humans, json for one envelope or jsonl for records."
+        },
+        {
+          "conflictsWith": [],
+          "long": "--json",
+          "repeatable": false,
+          "required": false,
+          "requires": [],
+          "summary": "Exact alias of --format json."
+        },
+        {
+          "conflictsWith": [],
+          "long": "--compact",
+          "repeatable": false,
+          "required": false,
+          "requires": [],
+          "summary": "Render JSON on a single line."
+        },
+        {
+          "conflictsWith": [],
+          "long": "--pretty",
+          "repeatable": false,
+          "required": false,
+          "requires": [],
+          "summary": "--pretty=false selects compact JSON."
+        },
+        {
+          "conflictsWith": [],
+          "long": "--non-interactive",
+          "repeatable": false,
+          "required": false,
+          "requires": [],
+          "summary": "Never prompt; fail instead of asking a question."
+        },
+        {
+          "argument": {
+            "choices": [
+              "auto",
+              "always",
+              "never"
+            ],
+            "name": "VALUE",
+            "type": "choice"
+          },
+          "conflictsWith": [],
+          "default": "auto",
+          "long": "--color",
+          "repeatable": false,
+          "required": false,
+          "requires": [],
+          "summary": "Control ANSI colors on terminals."
+        },
+        {
+          "argument": {
+            "choices": [
+              "auto",
+              "always",
+              "never"
+            ],
+            "name": "VALUE",
+            "type": "choice"
+          },
+          "conflictsWith": [],
+          "default": "auto",
+          "long": "--progress",
+          "repeatable": false,
+          "required": false,
+          "requires": [],
+          "summary": "Show the progress of a long run on stderr in text mode: auto only when stderr is a terminal."
+        },
+        {
+          "conflictsWith": [],
+          "long": "--verbose",
+          "repeatable": false,
+          "required": false,
+          "requires": [],
+          "summary": "Add the details of the run on stderr in text mode; silent in JSON."
+        },
+        {
+          "argument": {
+            "choices": [
+              "auto",
+              "always",
+              "never"
+            ],
+            "name": "VALUE",
+            "type": "choice"
+          },
+          "conflictsWith": [],
+          "default": "auto",
+          "long": "--pager",
+          "repeatable": false,
+          "required": false,
+          "requires": [],
+          "summary": "Page the text rendering when stdout is a terminal; never in a pipe, in JSON or under --non-interactive."
+        },
+        {
+          "conflictsWith": [],
+          "long": "--help",
+          "repeatable": false,
+          "required": false,
+          "requires": [],
+          "summary": "Show the help of the selected command."
+        }
+      ],
+      "invariants": [
+        "usage and agent discovery share one catalog",
+        "transactional commands plan by default and require --apply",
+        "stdout carries success data; stderr carries failures",
+        "--json and --format json are identical",
+        "unknown or duplicated options are refused",
+        "stream commands reject envelope rendering flags",
+        "external commands receive their arguments verbatim"
+      ],
+      "kind": "catalog",
+      "output": {
+        "contract": "agent-cli/v2",
+        "schemaVersion": 2,
+        "stderr": "diagnostics and failure envelopes",
+        "stdout": "success data only; protocol streams are explicit exceptions"
+      },
+      "product": "Maelys OCI",
+      "program": "maelys-oci",
+      "schemaVersion": 1
+    }
+  }
+}
