@@ -6,6 +6,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import tempfile
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -32,14 +33,16 @@ def publish(path, content):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ('prefix', 'version', 'binary', 'pkgconfig', 'manifest',
-                 'http-libs', 'private-libs'):
+                 'mbedtls-min-version', 'private-libs'):
         parser.add_argument(f'--{name}', required=True)
     args = parser.parse_args()
     if not Path(args.prefix).is_absolute() or any(c in args.prefix for c in '\n\r\0'):
         parser.error('prefix must be an absolute, single-line path')
+    if not re.fullmatch(r'[0-9]+(\.[0-9]+){1,2}', args.mbedtls_min_version):
+        parser.error('mbedtls-min-version must be a dotted version')
     pc = (ROOT / 'packaging/maelys-oci.pc.in').read_text()
     for name, value in (('PREFIX', args.prefix), ('VERSION', args.version),
-                        ('HTTP_LIBS', args.http_libs),
+                        ('MBEDTLS_MIN_VERSION', args.mbedtls_min_version),
                         ('PLATFORM_PRIVATE_LIBS', args.private_libs)):
         pc = pc.replace(f'@{name}@', value)
     manifest = json.loads((ROOT / 'cli/command.json.in').read_text())

@@ -1423,6 +1423,18 @@
           "summary": "Page the text rendering when stdout is a terminal; never in a pipe, in JSON or under --non-interactive."
         },
         {
+          "argument": {
+            "name": "NAME",
+            "type": "string"
+          },
+          "conflictsWith": [],
+          "long": "--field",
+          "repeatable": false,
+          "required": false,
+          "requires": [],
+          "summary": "Render one top-level member of data instead of the whole result, by the text or jsonl rendering rules."
+        },
+        {
           "conflictsWith": [],
           "long": "--help",
           "repeatable": false,

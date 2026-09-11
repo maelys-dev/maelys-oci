@@ -52,10 +52,6 @@ EMBED := $(MAELYS_CLI_DIR)/tools/maelys-cli-embed
 PKG_CONFIG_PATH ?= /opt/homebrew/opt/libarchive/lib/pkgconfig:/opt/homebrew/opt/e2fsprogs/lib/pkgconfig
 # External headers are system headers: our warning set is not theirs.
 OCI_CFLAGS ?= $(shell PKG_CONFIG_PATH=$(PKG_CONFIG_PATH) $(PKG_CONFIG) --cflags libarchive ext2fs com_err 2>/dev/null | sed 's/-I/-isystem /g')
-# Mbed TLS 3/4 ship pkg-config files; Debian's 2.28 does not and installs
-# its libraries in the default search path.
-HTTP_CFLAGS ?= $(shell $(PKG_CONFIG) --cflags mbedtls mbedx509 mbedcrypto 2>/dev/null | sed 's/-I/-isystem /g')
-HTTP_LIBS ?= $(shell $(PKG_CONFIG) --libs mbedtls mbedx509 mbedcrypto 2>/dev/null || echo "-lmbedtls -lmbedx509 -lmbedcrypto")
 EXT2FS_VERSION ?= $(shell PKG_CONFIG_PATH=$(PKG_CONFIG_PATH) $(PKG_CONFIG) --modversion ext2fs 2>/dev/null)
 UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S),Darwin)
@@ -70,6 +66,48 @@ else
 OCI_LIBS ?= $(shell PKG_CONFIG_PATH=$(PKG_CONFIG_PATH) $(PKG_CONFIG) --libs libarchive ext2fs com_err 2>/dev/null)
 POST_LINK = :
 PLATFORM_CPPFLAGS := -D_GNU_SOURCE
+endif
+
+# ---- Mbed TLS ----------------------------------------------------------------
+# maelys-http refuses at compile time a Mbed TLS below its security floor
+# (3.6.7 as of maelys-http 0.1.6). Linux distributions ship below it, so on
+# Linux the upstream commit that dependencies/mbedtls.pin names is built from
+# source, as maelys-http's own CI does; macOS takes Homebrew's, above the
+# floor. MBEDTLS_SOURCE=pinned|system overrides the choice; pinned on macOS
+# links against Homebrew's Mbed TLS whenever one is installed, because
+# PLATFORM_PRIVATE_LIBS puts /opt/homebrew/lib ahead of the pinned prefix.
+# The pinned build is static and private to this tree: the installed
+# pkg-config file requires a consumer's Mbed TLS above the same floor
+# (Requires.private) and names no search path of ours.
+ifeq ($(UNAME_S),Darwin)
+MBEDTLS_SOURCE ?= system
+else
+MBEDTLS_SOURCE ?= pinned
+endif
+MBEDTLS_DIR ?= ../mbedtls
+MBEDTLS_PIN := $(shell sed -n '2p' dependencies/mbedtls.pin)
+MBEDTLS_BUILD ?= $(abspath $(BUILD)/deps/mbedtls)
+override MBEDTLS_BUILD := $(call build_directory,$(MBEDTLS_BUILD))
+MBEDTLS_PREFIX := $(MBEDTLS_BUILD)/prefix
+MBEDTLS_PC := $(MBEDTLS_PREFIX)/lib/pkgconfig/mbedtls.pc
+# The floor maelys-http enforces, read from its pinned checkout so the
+# installed pkg-config file requires of a consumer's Mbed TLS exactly what
+# the build required of ours.
+MBEDTLS_MIN_VERSION := $(shell sed -n 's/^MBEDTLS_PKGCONFIG_MIN_VERSION ?= //p' $(MAELYS_HTTP_DIR)/Makefile)
+ifeq ($(MBEDTLS_SOURCE),pinned)
+MBEDTLS_DEP := $(MBEDTLS_PC)
+MBEDTLS_PKG_CONFIG_PATH := $(MBEDTLS_PREFIX)/lib/pkgconfig
+MBEDTLS_ENV := PKG_CONFIG_PATH=$(MBEDTLS_PKG_CONFIG_PATH)
+HTTP_CFLAGS ?= -isystem $(MBEDTLS_PREFIX)/include
+HTTP_LIBS ?= -L$(MBEDTLS_PREFIX)/lib -lmbedtls -lmbedx509 -lmbedcrypto
+else
+MBEDTLS_DEP :=
+MBEDTLS_PKG_CONFIG_PATH :=
+MBEDTLS_ENV :=
+# Mbed TLS 3/4 ship pkg-config files; Debian's 2.28 does not and installs
+# its libraries in the default search path.
+HTTP_CFLAGS ?= $(shell $(PKG_CONFIG) --cflags mbedtls mbedx509 mbedcrypto 2>/dev/null | sed 's/-I/-isystem /g')
+HTTP_LIBS ?= $(shell $(PKG_CONFIG) --libs mbedtls mbedx509 mbedcrypto 2>/dev/null || echo "-lmbedtls -lmbedx509 -lmbedcrypto")
 endif
 
 # ---- flags -------------------------------------------------------------------------
@@ -156,10 +194,23 @@ $(MAELYS_SYSTEM_LIB): dependencies/maelys-system.pin | check-dependencies
 $(MAELYS_JSON_LIB): dependencies/maelys-json.pin | check-dependencies
 	$(MAKE) -C $(MAELYS_JSON_DIR) BUILD=$(MAELYS_JSON_BUILD) all
 
+# The pinned Mbed TLS: a static build installed under this tree, verified
+# against its pin like every other dependency, rebuilt when the pin moves.
+$(MBEDTLS_PC): dependencies/mbedtls.pin | check-dependencies
+	@test "$$(git -C $(MBEDTLS_DIR) rev-parse HEAD)" = "$(MBEDTLS_PIN)"
+	rm -rf $(MBEDTLS_BUILD)
+	cmake -S $(MBEDTLS_DIR) -B $(MBEDTLS_BUILD)/cmake \
+		-DENABLE_PROGRAMS=OFF -DENABLE_TESTING=OFF \
+		-DCMAKE_BUILD_TYPE=Release \
+		-DCMAKE_INSTALL_PREFIX=$(MBEDTLS_PREFIX)
+	cmake --build $(MBEDTLS_BUILD)/cmake --parallel
+	cmake --install $(MBEDTLS_BUILD)/cmake
+	@test -f $@
+
 HTTP_OUTPUTS := $(MAELYS_HTTP_TLS_LIB) $(MAELYS_HTTP_CLIENT_LIB) $(MAELYS_HTTP_CORE_LIB)
-$(MAELYS_HTTP_STAMP): dependencies/maelys-http.pin $(MAELYS_SYSTEM_LIB) \
+$(MAELYS_HTTP_STAMP): dependencies/maelys-http.pin $(MAELYS_SYSTEM_LIB) $(MBEDTLS_DEP) \
         $(if $(filter-out $(wildcard $(HTTP_OUTPUTS)),$(HTTP_OUTPUTS)),FORCE) | check-dependencies
-	$(MAKE) -C $(MAELYS_HTTP_DIR) BUILD=$(MAELYS_HTTP_BUILD) \
+	$(MBEDTLS_ENV) $(MAKE) -C $(MAELYS_HTTP_DIR) BUILD=$(MAELYS_HTTP_BUILD) \
 		SYSTEM_DIR=$(abspath $(MAELYS_SYSTEM_DIR)) \
 		SYSTEM_LIB=$(MAELYS_SYSTEM_LIB) all check-mbedtls
 	@mkdir -p $(@D)
@@ -237,7 +288,7 @@ $(OCI_LIB): $(LIB_OBJECTS)
 	rm -f $@
 	ZERO_AR_DATE=1 $(AR) rcs $@ $^
 
-check-mbedtls-security:
+check-mbedtls-security: $(MBEDTLS_DEP)
 	@mkdir -p $(BUILD)/tests
 	$(CC) $(HTTP_CFLAGS) $(CFLAGS) $(COMMON_CFLAGS) -I. \
 		src/puller/tls_version.c tests/security/check_mbedtls_version.c \
@@ -261,7 +312,7 @@ $(OCI_BIN): $(CLI_OBJECTS) $(OCI_LIB) $(MAELYS_CLI_LIB) \
 install-metadata: $(OCI_BIN)
 	$(PYTHON) scripts/render-install-metadata.py --prefix="$(PREFIX)" \
 		--version="$(VERSION)" --binary="$(OCI_BIN)" --pkgconfig="$(PC)" \
-		--manifest="$(MANIFEST)" --http-libs="$(HTTP_LIBS)" \
+		--manifest="$(MANIFEST)" --mbedtls-min-version="$(MBEDTLS_MIN_VERSION)" \
 		--private-libs="$(PLATFORM_PRIVATE_LIBS)"
 
 $(PC) $(MANIFEST): | install-metadata
@@ -349,7 +400,7 @@ pkgconfig-check: $(PC) $(PULL_LINK_LIBS)
 	sed 's|^prefix=.*|prefix=$(abspath $(BUILD))/public-stage|' $(PC) >$(BUILD)/public-stage/lib/pkgconfig/maelys-oci.pc
 	@for archive in $(abspath $(PULL_LINK_LIBS)); do ln -sf "$$archive" $(BUILD)/public-stage/lib/; done
 	$(CC) $(CFLAGS) $(COMMON_CFLAGS) tests/public/pull.c \
-        $$(PKG_CONFIG_PATH=$(abspath $(BUILD))/public-stage/lib/pkgconfig:$(PKG_CONFIG_PATH) $(PKG_CONFIG) --static --cflags --libs maelys-oci) \
+        $$(PKG_CONFIG_PATH=$(abspath $(BUILD))/public-stage/lib/pkgconfig:$(MBEDTLS_PKG_CONFIG_PATH):$(PKG_CONFIG_PATH) $(PKG_CONFIG) --static --cflags --libs maelys-oci) \
         $(LDFLAGS) -o $(BUILD)/public-stage/pull
 	$(BUILD)/public-stage/pull
 parser-check: $(PARSER_TEST)

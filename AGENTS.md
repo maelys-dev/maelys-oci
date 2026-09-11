@@ -49,7 +49,7 @@ License: https://creativecommons.org/licenses/by/4.0/
 When sharing adaptations, retain attribution and indicate your changes.
 -->
 
-# Maelys CLI framework (maelys-cli 0.5.22, 83fb60b)
+# Maelys CLI framework (maelys-cli 0.5.23, e915bc8)
 
 This project builds its command-line interface on `libmaelys_cli`. The
 complete guide is in `docs/maelys-cli-guide.md`; this block is the summary
@@ -171,7 +171,8 @@ are in `docs/conventions.md` of maelys-release.
   wanted tag. `maelys-release check DIR` (exit 2 on any violation) verifies;
   `maelys-release preflight DIR` checks the tag preconditions before a
   release. The command follows agent-cli/v2: `--format json` everywhere,
-  `describe` for the catalog.
+  `describe` for the catalog, and `--field NAME` to read one member of the
+  result without a `jq` expression.
 - A dependency on another Maelys repository is `dependencies/<name>.pin` (tag on
   line 1, commit on line 2), cloned by `scripts/checkout-dependency.sh NAME`.
   The packages the build needs on the runners are listed in
@@ -188,6 +189,11 @@ are in `docs/conventions.md` of maelys-release.
   `release/vX.Y.Z`, opens the pull request and waits for its checks; after
   the merge, `cut DIR X.Y.Z --tag --apply` signs the tag on the merge commit
   those checks ran on. It never merges its own pull request.
+- A branch is named after the change it carries, with the prefix that
+  change would take in a commit message (`fix/`, `docs/`, `release/`…),
+  never after the tool that created it: a name says what changes, not who
+  typed. No list is closed; the commit prefixes this repository already
+  uses are its vocabulary.
 - The workflow verifies the tag through the GitHub API, builds on Linux
   x86_64, Linux arm64 and macOS arm64 with `scripts/package-release.sh
   TARGET`, attests provenance, publishes the GitHub release, renders
