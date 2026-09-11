@@ -1,5 +1,37 @@
 # Changelog
 
+## 0.6.1 - 2026-09-11
+
+- Pin maelys-http v0.1.11 (from v0.1.5): the client rejects forbidden
+  `Content-Length` and `Transfer-Encoding` fields on 1xx, 204 and CONNECT
+  responses before a connection is reused, bounds chunk extensions over the
+  whole message, and delivers a 3xx whose `Location` it will not follow
+  instead of failing the exchange. No code of the puller changed; the
+  integrity suite passes against it.
+- **Mbed TLS is pinned and built from source on Linux.** maelys-http 0.1.6
+  refuses at compile time a Mbed TLS below its security floor (3.6.7), and
+  the distributions ship below it (Ubuntu 26.04: 3.6.5). `dependencies/mbedtls.pin`
+  names the upstream commit maelys-http itself builds, with its repository
+  and submodule; `scripts/checkout-dependency.sh mbedtls` fetches it and the
+  Makefile builds it with cmake into the build tree, static and private,
+  before maelys-http (`MBEDTLS_SOURCE=pinned`, the Linux default; macOS
+  keeps Homebrew's, `system`). `dependencies/packages` trades
+  `libmbedtls-dev` for `cmake` on Linux. The installed pkg-config file now
+  requires a consumer's Mbed TLS through `Requires.private` at the floor
+  maelys-http declares, read from its pinned checkout, instead of listing
+  the libraries of the build host.
+- Pin maelys-cli v0.5.23 (from v0.5.22), which pins agent-cli-spec v2.4.0:
+  the framework's trunk gains `--field NAME`, rendering one top-level member
+  of a command's `data`; visible in the regenerated `docs/cli.md` and
+  `docs/cli-contract.json`. Installed agent texts refreshed.
+- Pin maelys-json v0.1.5 (from v0.1.3): two additions to the writer and
+  error API, unused here; no change in behaviour.
+- Release socle maelys-release v0.35.0 (from v0.33.0): the managed blocks
+  and the skill name `--field` and the branch-naming convention;
+  `declarations` names a workflow that runs twice on every pull request
+  and recognises a branch protected by a ruleset. Nothing in the release
+  mechanism changes.
+
 ## 0.6.0 - 2026-09-11
 
 - Release socle maelys-release v0.33.0 (from v0.27.0): the job that runs

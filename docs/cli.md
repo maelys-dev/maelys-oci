@@ -33,4 +33,5 @@ Global options:
 - `--progress auto|always|never`: Show the progress of a long run on stderr in text mode: auto only when stderr is a terminal.
 - `--verbose`: Add the details of the run on stderr in text mode; silent in JSON.
 - `--pager auto|always|never`: Page the text rendering when stdout is a terminal; never in a pipe, in JSON or under --non-interactive.
+- `--field NAME`: Render one top-level member of data instead of the whole result, by the text or jsonl rendering rules.
 - `--help`: Show the help of the selected command.

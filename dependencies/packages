@@ -1,6 +1,10 @@
 # System packages the build needs on the release and CI runners, read by
 # maelys-release adopt (apt names under [linux], brew names under [macos]).
+# Mbed TLS is not listed for Linux: maelys-http's security floor is above what
+# the distribution ships, so the build compiles the commit dependencies/mbedtls.pin
+# names, with cmake.
 [linux]
+cmake
 pkg-config
 python3
 perl
@@ -8,7 +12,6 @@ libarchive-dev
 libext2fs-dev
 comerr-dev
 e2fsprogs
-libmbedtls-dev
 [macos]
 pkgconf
 libarchive

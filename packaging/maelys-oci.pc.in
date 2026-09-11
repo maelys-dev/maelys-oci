@@ -7,7 +7,7 @@ commandsdir=${prefix}/share/maelys/commands
 Name: maelys-oci
 Description: Bounded OCI acquisition and immutable artifact store
 Version: @VERSION@
-Requires.private: libarchive ext2fs com_err
+Requires.private: libarchive ext2fs com_err mbedtls >= @MBEDTLS_MIN_VERSION@ mbedx509 >= @MBEDTLS_MIN_VERSION@ mbedcrypto >= @MBEDTLS_MIN_VERSION@
 Libs: -L${libdir} -lmaelys-oci
-Libs.private: @PLATFORM_PRIVATE_LIBS@ -lmaelys_http_tls_mbedtls -lmaelys_http_client -lmaelys_http -lmaelys-json -lmaelys_sys @HTTP_LIBS@ -pthread
+Libs.private: @PLATFORM_PRIVATE_LIBS@ -lmaelys_http_tls_mbedtls -lmaelys_http_client -lmaelys_http -lmaelys-json -lmaelys_sys -pthread
 Cflags: -I${includedir}
