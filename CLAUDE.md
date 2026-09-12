@@ -174,7 +174,11 @@ are in `docs/conventions.md` of maelys-release.
   enriching it, and `maelys-release migrate` moves it with its history.
   **That repository is private: never name it from a public README.** The
   reader of this block has access to it; the reader of a README may not.
-- A tag whose release or formula failed is replayed in full with
-  `gh workflow run release.yml -f tag=vX.Y.Z` after adopting a corrected
-  socle; a tag is never moved or recreated.
+- A tag whose release or formula failed for a reason outside the code — a
+  cancelled job, an expired approval, a tap push lost to a race — is replayed
+  with `gh workflow run release.yml --ref vX.Y.Z -f tag=vX.Y.Z`. **`--ref`
+  names the tag**: the `release` environment only accepts tags `v*`, so a run
+  started from the default branch is refused at `publish`. A replay runs the
+  socle that tag pinned; when the socle is at fault, the remedy is a new patch
+  release carrying the corrected pin. A tag is never moved or recreated.
 <!-- maelys-release:end -->

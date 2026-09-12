@@ -1,6 +1,6 @@
 name: release
 
-# Managed by maelys-release v0.35.0 (0.35.0). Regenerate with
+# Managed by maelys-release untagged (0.40.0). Regenerate with
 # 'maelys-release adopt' of maelys-release; do not edit by hand.
 on:
   push:
@@ -19,7 +19,7 @@ permissions:
 
 jobs:
   release:
-    uses: maelys-dev/maelys-release/.github/workflows/release.yml@12ac509405c9d79087412fe3d289e4e14b3bb329 # v0.35.0
+    uses: maelys-dev/maelys-release/.github/workflows/release.yml@f43417054d8c2384769e9a70edd37ab8d61a29d2 # untagged
     permissions:
       contents: write
       id-token: write
