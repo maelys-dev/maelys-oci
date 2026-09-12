@@ -1,5 +1,43 @@
 # Changelog
 
+## 0.6.2 - 2026-09-12
+
+- **Homebrew formulas.** `packaging/homebrew/libmaelys-oci.rb.in` installs
+  the library, its header and its pkg-config file; `maelys-oci.rb.in`
+  installs the terminal, the manifest that registers `maelys oci` and the
+  shell completions. Both depend on the tap's `libmaelys-sys`,
+  `libmaelys-json` and `libmaelys-http` (build-time for the terminal, which
+  links them), on `mbedtls`, `libarchive` and `e2fsprogs`, and stage
+  maelys-cli at the tag's pin as a build resource, as maelys-egress does.
+  `scripts/render-homebrew-formula.sh TAG OUTPUT NAME` renders one from the
+  tag's own copy; the socle's tap jobs build bottles on macos-15 and
+  macos-26 and push to `maelys-dev/homebrew-tap`.
+- **The Makefile builds against installed Maelys libraries.**
+  `MAELYS_SYSTEM_PREFIX`, `MAELYS_JSON_PREFIX` and `MAELYS_HTTP_PREFIX` name
+  an installed library instead of its pinned checkout (the default, what
+  every gate runs). An installed library must carry the ABI this tree was
+  written against (`MAELYS_SYSTEM_ABI` 1, `MAELYS_JSON_ABI` 2,
+  `MAELYS_HTTP_ABI` 1, now also asserted on the checkouts) and at least the
+  pinned version, read from its version header or pkg-config file; older is
+  refused. An installed maelys-http was built against its host's Mbed TLS,
+  so a prefix build takes that one. maelys-cli is always built from its
+  checkout: the framework is linked into the terminal. `install` splits
+  into `install-library` and `install-command`.
+- Pin maelys-http v0.1.13 (from v0.1.11): signing keys read from the
+  default branch, its Homebrew formula renamed `libmaelys-http` with Mbed TLS
+  mandatory; the version the tap's formula carries.
+- Pin maelys-json v0.2.0 (from v0.1.5): ABI 2, which removes two functions
+  added in 0.1.6 that this repository never called; the version the tap's
+  formula carries and maelys-cli pins.
+- Pin maelys-cli v0.5.25 (from v0.5.23): the dispatcher's sources move to
+  `cli/`, maelys-json v0.2.0; installed agent texts refreshed.
+- Release socle maelys-release v0.40.1 (from v0.35.0): `verify_command` and
+  `package_command` both run under bash; a replay of a tag runs the workflow
+  at that tag with `--ref`, and a socle at fault is fixed by a patch release,
+  never a replay; declarations move to `maelys-release.conf` (none here);
+  SBOM attestation for products that declare one (none here); `cut` audits
+  its own write. Nothing in this repository's release mechanism changes.
+
 ## 0.6.1 - 2026-09-11
 
 - Pin maelys-http v0.1.11 (from v0.1.5): the client rejects forbidden

@@ -25,20 +25,56 @@ MAELYS_HTTP_PIN := $(shell sed -n '2p' dependencies/maelys-http.pin)
 MAELYS_CLI_PIN := $(shell sed -n '2p' dependencies/maelys-cli.pin)
 MAELYS_RELEASE_DIR ?= ../maelys-release
 
+# Each Maelys library is either built from its pinned checkout MAELYS_<X>_DIR
+# (the default, what every gate runs) or taken already installed under
+# MAELYS_<X>_PREFIX (packaging: the Homebrew formulas depend on libmaelys-sys,
+# libmaelys-json and libmaelys-http). An installed library must carry the
+# ABI this tree was written against and at least the pinned version; the
+# checkout must be the pinned commit and carry that ABI. maelys-cli is always
+# built from its checkout: the framework is linked into the terminal.
+MAELYS_SYSTEM_ABI := 1u
+MAELYS_JSON_ABI := 2u
+MAELYS_HTTP_ABI := 1u
+MAELYS_SYSTEM_VERSION := $(patsubst v%,%,$(shell sed -n '1p' dependencies/maelys-system.pin))
+MAELYS_JSON_VERSION := $(patsubst v%,%,$(shell sed -n '1p' dependencies/maelys-json.pin))
+MAELYS_HTTP_VERSION := $(patsubst v%,%,$(shell sed -n '1p' dependencies/maelys-http.pin))
+
 MAELYS_SYSTEM_DIR ?= ../maelys-system
+MAELYS_SYSTEM_PREFIX ?=
 MAELYS_SYSTEM_BUILD ?= $(abspath $(BUILD)/deps/maelys-system)
 override MAELYS_SYSTEM_BUILD := $(call build_directory,$(MAELYS_SYSTEM_BUILD))
+ifeq ($(MAELYS_SYSTEM_PREFIX),)
+MAELYS_SYSTEM_INCLUDE := $(MAELYS_SYSTEM_DIR)/include
 MAELYS_SYSTEM_LIB := $(MAELYS_SYSTEM_BUILD)/lib/libmaelys_sys.a
+else
+MAELYS_SYSTEM_INCLUDE := $(MAELYS_SYSTEM_PREFIX)/include
+MAELYS_SYSTEM_LIB := $(MAELYS_SYSTEM_PREFIX)/lib/libmaelys_sys.a
+endif
 MAELYS_JSON_DIR ?= ../maelys-json
+MAELYS_JSON_PREFIX ?=
 MAELYS_JSON_BUILD ?= $(abspath $(BUILD)/deps/maelys-json)
 override MAELYS_JSON_BUILD := $(call build_directory,$(MAELYS_JSON_BUILD))
+ifeq ($(MAELYS_JSON_PREFIX),)
+MAELYS_JSON_INCLUDE := $(MAELYS_JSON_DIR)/include
 MAELYS_JSON_LIB := $(MAELYS_JSON_BUILD)/lib/libmaelys-json.a
+else
+MAELYS_JSON_INCLUDE := $(MAELYS_JSON_PREFIX)/include
+MAELYS_JSON_LIB := $(MAELYS_JSON_PREFIX)/lib/libmaelys-json.a
+endif
 MAELYS_HTTP_DIR ?= ../maelys-http
+MAELYS_HTTP_PREFIX ?=
 MAELYS_HTTP_BUILD ?= $(abspath $(BUILD)/deps/maelys-http)
 override MAELYS_HTTP_BUILD := $(call build_directory,$(MAELYS_HTTP_BUILD))
-MAELYS_HTTP_CORE_LIB := $(MAELYS_HTTP_BUILD)/libmaelys_http.a
-MAELYS_HTTP_CLIENT_LIB := $(MAELYS_HTTP_BUILD)/libmaelys_http_client.a
-MAELYS_HTTP_TLS_LIB := $(MAELYS_HTTP_BUILD)/libmaelys_http_tls_mbedtls.a
+ifeq ($(MAELYS_HTTP_PREFIX),)
+MAELYS_HTTP_INCLUDE := $(MAELYS_HTTP_DIR)/include
+MAELYS_HTTP_LIBDIR := $(MAELYS_HTTP_BUILD)
+else
+MAELYS_HTTP_INCLUDE := $(MAELYS_HTTP_PREFIX)/include
+MAELYS_HTTP_LIBDIR := $(MAELYS_HTTP_PREFIX)/lib
+endif
+MAELYS_HTTP_CORE_LIB := $(MAELYS_HTTP_LIBDIR)/libmaelys_http.a
+MAELYS_HTTP_CLIENT_LIB := $(MAELYS_HTTP_LIBDIR)/libmaelys_http_client.a
+MAELYS_HTTP_TLS_LIB := $(MAELYS_HTTP_LIBDIR)/libmaelys_http_tls_mbedtls.a
 MAELYS_HTTP_STAMP := $(BUILD)/deps/maelys-http.stamp
 MAELYS_CLI_DIR ?= ../maelys-cli
 MAELYS_CLI_BUILD ?= $(abspath $(BUILD)/deps/maelys-cli)
@@ -79,7 +115,11 @@ endif
 # The pinned build is static and private to this tree: the installed
 # pkg-config file requires a consumer's Mbed TLS above the same floor
 # (Requires.private) and names no search path of ours.
-ifeq ($(UNAME_S),Darwin)
+# An installed maelys-http was built against the Mbed TLS of its host, so a
+# prefix build takes that one too.
+ifneq ($(MAELYS_HTTP_PREFIX),)
+MBEDTLS_SOURCE ?= system
+else ifeq ($(UNAME_S),Darwin)
 MBEDTLS_SOURCE ?= system
 else
 MBEDTLS_SOURCE ?= pinned
@@ -118,8 +158,8 @@ LDFLAGS ?=
 WARNINGS := -Wall -Wextra -Wpedantic -Werror -Wconversion -Wshadow \
 	-Wstrict-prototypes -Wmissing-prototypes -Wformat=2
 COMMON_CFLAGS := -std=c11 $(WARNINGS) -pthread
-COMMON_CPPFLAGS := -Iinclude -I. -isystem $(MAELYS_SYSTEM_DIR)/include \
-	-isystem $(MAELYS_JSON_DIR)/include -isystem $(MAELYS_HTTP_DIR)/include \
+COMMON_CPPFLAGS := -Iinclude -I. -isystem $(MAELYS_SYSTEM_INCLUDE) \
+	-isystem $(MAELYS_JSON_INCLUDE) -isystem $(MAELYS_HTTP_INCLUDE) \
 	-isystem $(MAELYS_CLI_DIR)/include \
 	-D_POSIX_C_SOURCE=200809L -D_XOPEN_SOURCE=700 -D_DEFAULT_SOURCE \
 	$(PLATFORM_CPPFLAGS) \
@@ -172,27 +212,90 @@ all: $(OCI_LIB) $(OCI_BIN) $(PC) $(MANIFEST) $(COMPLETIONS)
 dependencies: check-dependencies $(MAELYS_SYSTEM_LIB) $(MAELYS_JSON_LIB) \
 	$(MAELYS_HTTP_TLS_LIB) $(MAELYS_CLI_LIB)
 
-check-dependencies:
+.PHONY: check-system check-json check-http check-cli
+check-dependencies: check-system check-json check-http check-cli
+
+# A checkout is the pinned commit, clean, and carries the ABI this tree was
+# written against; an installed library carries that ABI and at least the
+# pinned version. A pin bump rebuilds the dependency it names.
+ifeq ($(MAELYS_SYSTEM_PREFIX),)
+check-system:
 	@test "$$(git -C $(MAELYS_SYSTEM_DIR) rev-parse HEAD)" = \
 		"$(MAELYS_SYSTEM_PIN)"
 	@git -C $(MAELYS_SYSTEM_DIR) diff --quiet $(MAELYS_SYSTEM_PIN) -- .
 	@test -z "$$(git -C $(MAELYS_SYSTEM_DIR) ls-files --others --exclude-standard)"
+	@grep -Fq '#define MAELYS_SYS_ABI_VERSION $(MAELYS_SYSTEM_ABI)' \
+		$(MAELYS_SYSTEM_INCLUDE)/maelys/sys/version.h
+
+$(MAELYS_SYSTEM_LIB): dependencies/maelys-system.pin | check-dependencies
+	$(MAKE) -C $(MAELYS_SYSTEM_DIR) BUILD=$(MAELYS_SYSTEM_BUILD) all
+else
+check-system:
+	@test -f $(MAELYS_SYSTEM_LIB) -a -f $(MAELYS_SYSTEM_INCLUDE)/maelys/sys/version.h || \
+		{ echo "MAELYS_SYSTEM_PREFIX must hold an installed maelys-system" >&2; exit 1; }
+	@grep -Fq '#define MAELYS_SYS_ABI_VERSION $(MAELYS_SYSTEM_ABI)' \
+		$(MAELYS_SYSTEM_INCLUDE)/maelys/sys/version.h || \
+		{ echo "installed maelys-system has another ABI than $(MAELYS_SYSTEM_ABI)" >&2; exit 1; }
+	@installed=$$(sed -n 's/^#define MAELYS_SYS_VERSION "\(.*\)"$$/\1/p' \
+		$(MAELYS_SYSTEM_INCLUDE)/maelys/sys/version.h); \
+	oldest=$$(printf '%s\n%s\n' "$(MAELYS_SYSTEM_VERSION)" "$$installed" | \
+		sort -t. -k1,1n -k2,2n -k3,3n | sed -n '1p'); \
+	test "$$oldest" = "$(MAELYS_SYSTEM_VERSION)" || \
+		{ echo "installed maelys-system $$installed is older than $(MAELYS_SYSTEM_VERSION)" >&2; exit 1; }
+endif
+
+ifeq ($(MAELYS_JSON_PREFIX),)
+check-json:
 	@test "$$(git -C $(MAELYS_JSON_DIR) rev-parse HEAD)" = "$(MAELYS_JSON_PIN)"
 	@git -C $(MAELYS_JSON_DIR) diff --quiet $(MAELYS_JSON_PIN) -- .
 	@test -z "$$(git -C $(MAELYS_JSON_DIR) ls-files --others --exclude-standard)"
-	@test "$$(git -C $(MAELYS_HTTP_DIR) rev-parse HEAD)" = "$(MAELYS_HTTP_PIN)"
-	@git -C $(MAELYS_HTTP_DIR) diff --quiet $(MAELYS_HTTP_PIN) -- .
-	@test -z "$$(git -C $(MAELYS_HTTP_DIR) ls-files --others --exclude-standard)"
-	@test "$$(git -C $(MAELYS_CLI_DIR) rev-parse HEAD)" = "$(MAELYS_CLI_PIN)"
-	@git -C $(MAELYS_CLI_DIR) diff --quiet $(MAELYS_CLI_PIN) -- .
-	@test -z "$$(git -C $(MAELYS_CLI_DIR) ls-files --others --exclude-standard)"
-
-# A pin bump rebuilds the dependency it names.
-$(MAELYS_SYSTEM_LIB): dependencies/maelys-system.pin | check-dependencies
-	$(MAKE) -C $(MAELYS_SYSTEM_DIR) BUILD=$(MAELYS_SYSTEM_BUILD) all
+	@grep -Fq '#define MAELYS_JSON_ABI_VERSION $(MAELYS_JSON_ABI)' \
+		$(MAELYS_JSON_INCLUDE)/maelys/json.h
 
 $(MAELYS_JSON_LIB): dependencies/maelys-json.pin | check-dependencies
 	$(MAKE) -C $(MAELYS_JSON_DIR) BUILD=$(MAELYS_JSON_BUILD) all
+else
+check-json:
+	@test -f $(MAELYS_JSON_LIB) -a -f $(MAELYS_JSON_INCLUDE)/maelys/json.h || \
+		{ echo "MAELYS_JSON_PREFIX must hold an installed maelys-json" >&2; exit 1; }
+	@grep -Fq '#define MAELYS_JSON_ABI_VERSION $(MAELYS_JSON_ABI)' \
+		$(MAELYS_JSON_INCLUDE)/maelys/json.h || \
+		{ echo "installed maelys-json has another ABI than $(MAELYS_JSON_ABI)" >&2; exit 1; }
+	@installed=$$(PKG_CONFIG_PATH=$(MAELYS_JSON_PREFIX)/lib/pkgconfig \
+		$(PKG_CONFIG) --modversion maelys-json); \
+	oldest=$$(printf '%s\n%s\n' "$(MAELYS_JSON_VERSION)" "$$installed" | \
+		sort -t. -k1,1n -k2,2n -k3,3n | sed -n '1p'); \
+	test "$$oldest" = "$(MAELYS_JSON_VERSION)" || \
+		{ echo "installed maelys-json $$installed is older than $(MAELYS_JSON_VERSION)" >&2; exit 1; }
+endif
+
+ifeq ($(MAELYS_HTTP_PREFIX),)
+check-http:
+	@test "$$(git -C $(MAELYS_HTTP_DIR) rev-parse HEAD)" = "$(MAELYS_HTTP_PIN)"
+	@git -C $(MAELYS_HTTP_DIR) diff --quiet $(MAELYS_HTTP_PIN) -- .
+	@test -z "$$(git -C $(MAELYS_HTTP_DIR) ls-files --others --exclude-standard)"
+	@grep -Fq '#define MAELYS_HTTP_ABI_VERSION $(MAELYS_HTTP_ABI)' \
+		$(MAELYS_HTTP_INCLUDE)/maelys/http.h
+else
+check-http:
+	@test -f $(MAELYS_HTTP_CORE_LIB) -a -f $(MAELYS_HTTP_CLIENT_LIB) \
+		-a -f $(MAELYS_HTTP_TLS_LIB) -a -f $(MAELYS_HTTP_INCLUDE)/maelys/http.h || \
+		{ echo "MAELYS_HTTP_PREFIX must hold an installed maelys-http with its Mbed TLS provider" >&2; exit 1; }
+	@grep -Fq '#define MAELYS_HTTP_ABI_VERSION $(MAELYS_HTTP_ABI)' \
+		$(MAELYS_HTTP_INCLUDE)/maelys/http.h || \
+		{ echo "installed maelys-http has another ABI than $(MAELYS_HTTP_ABI)" >&2; exit 1; }
+	@installed=$$(PKG_CONFIG_PATH=$(MAELYS_HTTP_PREFIX)/lib/pkgconfig \
+		$(PKG_CONFIG) --modversion maelys-http); \
+	oldest=$$(printf '%s\n%s\n' "$(MAELYS_HTTP_VERSION)" "$$installed" | \
+		sort -t. -k1,1n -k2,2n -k3,3n | sed -n '1p'); \
+	test "$$oldest" = "$(MAELYS_HTTP_VERSION)" || \
+		{ echo "installed maelys-http $$installed is older than $(MAELYS_HTTP_VERSION)" >&2; exit 1; }
+endif
+
+check-cli:
+	@test "$$(git -C $(MAELYS_CLI_DIR) rev-parse HEAD)" = "$(MAELYS_CLI_PIN)"
+	@git -C $(MAELYS_CLI_DIR) diff --quiet $(MAELYS_CLI_PIN) -- .
+	@test -z "$$(git -C $(MAELYS_CLI_DIR) ls-files --others --exclude-standard)"
 
 # The pinned Mbed TLS: a static build installed under this tree, verified
 # against its pin like every other dependency, rebuilt when the pin moves.
@@ -208,6 +311,7 @@ $(MBEDTLS_PC): dependencies/mbedtls.pin | check-dependencies
 	@test -f $@
 
 HTTP_OUTPUTS := $(MAELYS_HTTP_TLS_LIB) $(MAELYS_HTTP_CLIENT_LIB) $(MAELYS_HTTP_CORE_LIB)
+ifeq ($(MAELYS_HTTP_PREFIX),)
 $(MAELYS_HTTP_STAMP): dependencies/maelys-http.pin $(MAELYS_SYSTEM_LIB) $(MBEDTLS_DEP) \
         $(if $(filter-out $(wildcard $(HTTP_OUTPUTS)),$(HTTP_OUTPUTS)),FORCE) | check-dependencies
 	$(MBEDTLS_ENV) $(MAKE) -C $(MAELYS_HTTP_DIR) BUILD=$(MAELYS_HTTP_BUILD) \
@@ -219,6 +323,7 @@ $(MAELYS_HTTP_STAMP): dependencies/maelys-http.pin $(MAELYS_SYSTEM_LIB) $(MBEDTL
 $(HTTP_OUTPUTS): $(MAELYS_HTTP_STAMP)
 	@test -f $@
 	@touch $@
+endif
 
 # The framework core has no dependency; its dispatcher reads manifests
 # through the maelys-json build of this tree.
@@ -231,7 +336,8 @@ $(MAELYS_CLI_STAMP): dependencies/maelys-cli.pin $(MAELYS_JSON_LIB) \
         $(if $(filter-out $(wildcard $(CLI_OUTPUTS)),$(CLI_OUTPUTS)),FORCE) | check-dependencies
 	$(MAKE) -C $(MAELYS_CLI_DIR) BUILD=$(MAELYS_CLI_BUILD) \
 		MAELYS_JSON_DIR=$(abspath $(MAELYS_JSON_DIR)) \
-		MAELYS_JSON_LIB=$(MAELYS_JSON_LIB) all
+		MAELYS_JSON_CFLAGS=-I$(abspath $(MAELYS_JSON_INCLUDE)) \
+		MAELYS_JSON_LIB=$(MAELYS_JSON_LIB) MAELYS_JSON_LIBS=$(MAELYS_JSON_LIB) all
 	@mkdir -p $(@D)
 	@touch $@
 
@@ -475,17 +581,25 @@ agents-status: $(MAELYS_DISPATCHER)
 dist:
 	BUILD="$(BUILD)" PYTHON="$(PYTHON)" scripts/package-release.sh $(BUILD_PLATFORM)
 
-install: all
-	install -d $(DESTDIR)$(PREFIX)/bin $(DESTDIR)$(PREFIX)/include/maelys \
-		$(DESTDIR)$(PREFIX)/lib/pkgconfig \
+# The library (archive, header, pkg-config file) and the command (terminal,
+# manifest, completions) install separately: the Homebrew formulas
+# libmaelys-oci and maelys-oci take one each. `install` takes both.
+.PHONY: install-library install-command
+install: install-library install-command
+
+install-library: all
+	install -d $(DESTDIR)$(PREFIX)/include/maelys $(DESTDIR)$(PREFIX)/lib/pkgconfig
+	install -m 0644 include/maelys/oci.h $(DESTDIR)$(PREFIX)/include/maelys/oci.h
+	install -m 0644 $(OCI_LIB) $(DESTDIR)$(PREFIX)/lib/libmaelys-oci.a
+	install -m 0644 $(PC) $(DESTDIR)$(PREFIX)/lib/pkgconfig/maelys-oci.pc
+
+install-command: all
+	install -d $(DESTDIR)$(PREFIX)/bin \
 		$(DESTDIR)$(PREFIX)/share/maelys/commands \
 		$(DESTDIR)$(PREFIX)/share/bash-completion/completions \
 		$(DESTDIR)$(PREFIX)/share/zsh/site-functions \
 		$(DESTDIR)$(PREFIX)/share/fish/vendor_completions.d
 	install -m 0755 $(OCI_BIN) $(DESTDIR)$(PREFIX)/bin/maelys-oci
-	install -m 0644 include/maelys/oci.h $(DESTDIR)$(PREFIX)/include/maelys/oci.h
-	install -m 0644 $(OCI_LIB) $(DESTDIR)$(PREFIX)/lib/libmaelys-oci.a
-	install -m 0644 $(PC) $(DESTDIR)$(PREFIX)/lib/pkgconfig/maelys-oci.pc
 	install -m 0644 $(MANIFEST) $(DESTDIR)$(PREFIX)/share/maelys/commands/oci.json
 	install -m 0644 $(BUILD)/share/completions/maelys-oci.bash \
 		$(DESTDIR)$(PREFIX)/share/bash-completion/completions/maelys-oci

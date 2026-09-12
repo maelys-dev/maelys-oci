@@ -49,7 +49,7 @@ License: https://creativecommons.org/licenses/by/4.0/
 When sharing adaptations, retain attribution and indicate your changes.
 -->
 
-# Maelys CLI framework (maelys-cli 0.5.23, e915bc8)
+# Maelys CLI framework (maelys-cli 0.5.25, 4f8a423)
 
 This project builds its command-line interface on `libmaelys_cli`. The
 complete guide is in `docs/maelys-cli-guide.md`; this block is the summary
@@ -197,7 +197,7 @@ are in `docs/conventions.md` of maelys-release.
 - The workflow verifies the tag through the GitHub API, builds on Linux
   x86_64, Linux arm64 and macOS arm64 with `scripts/package-release.sh
   TARGET`, attests provenance, publishes the GitHub release, renders
-  packaging/homebrew/<name>.rb.in from the tag's own copy, builds
+  packaging/homebrew/libmaelys-oci.rb.in, packaging/homebrew/maelys-oci.rb.in from the tag's own copy, builds
   bottles when configured and pushes the formula to `maelys-dev/homebrew-tap`.
 - Formula names: a command is named after its binary (`maelys-egress`), a
   library after its archive with a `lib` prefix (`libmaelys-sys`). Dependency
@@ -217,7 +217,11 @@ are in `docs/conventions.md` of maelys-release.
   enriching it, and `maelys-release migrate` moves it with its history.
   **That repository is private: never name it from a public README.** The
   reader of this block has access to it; the reader of a README may not.
-- A tag whose release or formula failed is replayed in full with
-  `gh workflow run release.yml -f tag=vX.Y.Z` after adopting a corrected
-  socle; a tag is never moved or recreated.
+- A tag whose release or formula failed for a reason outside the code — a
+  cancelled job, an expired approval, a tap push lost to a race — is replayed
+  with `gh workflow run release.yml --ref vX.Y.Z -f tag=vX.Y.Z`. **`--ref`
+  names the tag**: the `release` environment only accepts tags `v*`, so a run
+  started from the default branch is refused at `publish`. A replay runs the
+  socle that tag pinned; when the socle is at fault, the remedy is a new patch
+  release carrying the corrected pin. A tag is never moved or recreated.
 <!-- maelys-release:end -->
