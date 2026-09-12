@@ -76,7 +76,7 @@ the first Linux build of the product.
   it is missing.
 - `scripts/package-release.sh TARGET`: must leave every artifact and its
   `.sha256` in `dist/`; keep it runnable locally.
-- packaging/homebrew/<name>.rb.in: placeholders `@URL@`, `@VERSION@`,
+- packaging/homebrew/libmaelys-oci.rb.in, packaging/homebrew/maelys-oci.rb.in: placeholders `@URL@`, `@VERSION@`,
   `@SHA256@`, plus any pin placeholder your renderer fills. Validate with
   `brew style`, `brew audit --strict` through a temporary tap, and
   `brew install --build-from-source` followed by `brew test`.

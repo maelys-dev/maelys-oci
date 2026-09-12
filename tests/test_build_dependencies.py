@@ -3,6 +3,7 @@
 """Exercise the real dependency graph with tiny pinned source repositories."""
 from pathlib import Path
 import os
+import re
 import shutil
 import subprocess
 import tempfile
@@ -11,6 +12,12 @@ import unittest
 
 ROOT = Path(__file__).resolve().parent.parent
 MAKE = shutil.which('make')
+ABI_HEADERS = {
+    'SYSTEM': ('include/maelys/sys/version.h', 'MAELYS_SYS_ABI_VERSION'),
+    'JSON': ('include/maelys/json.h', 'MAELYS_JSON_ABI_VERSION'),
+    'HTTP': ('include/maelys/http.h', 'MAELYS_HTTP_ABI_VERSION'),
+}
+ABI = dict(re.findall(r'^MAELYS_(SYSTEM|JSON|HTTP)_ABI := (\S+)$', (ROOT / 'Makefile').read_text(), re.M))
 OUTPUTS = {
     'SYSTEM': ('lib/libmaelys_sys.a',),
     'JSON': ('lib/libmaelys-json.a',),
@@ -42,8 +49,15 @@ class Dependencies(unittest.TestCase):
                 'all: $(outputs)\n\t@printf "invoked\\n" >> $(BUILD)/invocations\n'
                 'check-mbedtls: all\n'
                 '$(outputs):\n\t@mkdir -p $(@D)\n\t@printf "archive\\n" > $@\n')
+            # The Makefile asserts the ABI of every checkout on its version
+            # header; a fixture carries the header, with the value the
+            # Makefile expects, and nothing else.
+            if name in ABI_HEADERS:
+                header, macro = ABI_HEADERS[name]
+                (source / header).parent.mkdir(parents=True)
+                (source / header).write_text(f'#define {macro} {ABI[name]}\n')
             self.git(source, 'init', '-q')
-            self.git(source, 'add', 'Makefile')
+            self.git(source, 'add', '.')
             self.git(source, '-c', 'user.name=Build test', '-c', 'user.email=build@example.invalid',
                      '-c', 'commit.gpgSign=false', 'commit', '-qm', 'fixture')
             pin = self.git(source, 'rev-parse', 'HEAD').strip()
