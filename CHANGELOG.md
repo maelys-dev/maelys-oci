@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.6.3 - 2026-09-12
+
+- **The Homebrew formulas build.** 0.6.2's tap jobs failed while rendering
+  the install metadata: in a prefix build the Mbed TLS floor was read from
+  a maelys-http checkout that does not exist, and `brew --prefix` is not on
+  the path inside Homebrew's sandbox, which put `-L/lib` in the pkg-config
+  file. The floor now comes from the pkg-config file the installed
+  maelys-http carries for its Mbed TLS provider, a build that finds no floor
+  stops at once, and the Homebrew prefix is taken from `HOMEBREW_PREFIX`
+  when the sandbox sets it. The local prefix test now runs with no sibling
+  checkout and no `brew` reachable, which is what had hidden both.
+- Release socle maelys-release v0.44.0 (from v0.40.1): `[runners]` lets a
+  private repository name the runner of the socle's macOS jobs, `protect`
+  derives a default branch's protection from the declarations,
+  `dependencies` materialises the pins; `preflight` reports a formula the
+  tap serves. Nothing in this repository's release mechanism changes.
+
 ## 0.6.2 - 2026-09-12
 
 - **Homebrew formulas.** `packaging/homebrew/libmaelys-oci.rb.in` installs

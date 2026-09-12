@@ -43,7 +43,11 @@ class Dependencies(unittest.TestCase):
             source = self.base / f'source-{name.lower()}'
             source.mkdir()
             self.sources[name] = source
+            # maelys-http declares the Mbed TLS floor the product's Makefile
+            # reads from its checkout; a fixture standing for it declares one.
+            floor = 'MBEDTLS_PKGCONFIG_MIN_VERSION ?= 3.6.7\n' if name == 'HTTP' else ''
             (source / 'Makefile').write_text(
+                floor +
                 'outputs := ' + ' '.join(f'$(BUILD)/{path}' for path in outputs) + '\n'
                 '.PHONY: all check-mbedtls\n'
                 'all: $(outputs)\n\t@printf "invoked\\n" >> $(BUILD)/invocations\n'
