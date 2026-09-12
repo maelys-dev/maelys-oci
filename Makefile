@@ -94,8 +94,10 @@ ifeq ($(UNAME_S),Darwin)
 OCI_LIBS ?= $(shell PKG_CONFIG_PATH=$(PKG_CONFIG_PATH) $(PKG_CONFIG) --libs libarchive 2>/dev/null) /opt/homebrew/opt/e2fsprogs/lib/libext2fs.2.1.dylib /opt/homebrew/opt/e2fsprogs/lib/libcom_err.1.1.dylib
 # Homebrew's libarchive.pc lists private libraries such as zstd and lz4
 # without their search directory. Keep that directory in our static-link
-# metadata so installed consumers do not need ambient LDFLAGS.
-PLATFORM_PRIVATE_LIBS := -L$(shell brew --prefix)/lib
+# metadata so installed consumers do not need ambient LDFLAGS. Inside a
+# formula build, Homebrew's sandbox carries HOMEBREW_PREFIX and no `brew`.
+HOMEBREW_PREFIX ?= $(shell brew --prefix 2>/dev/null)
+PLATFORM_PRIVATE_LIBS := $(if $(HOMEBREW_PREFIX),-L$(HOMEBREW_PREFIX)/lib,)
 POST_LINK = codesign --force --sign - --timestamp=none $@
 PLATFORM_CPPFLAGS := -D_DARWIN_C_SOURCE
 else
@@ -130,10 +132,20 @@ MBEDTLS_BUILD ?= $(abspath $(BUILD)/deps/mbedtls)
 override MBEDTLS_BUILD := $(call build_directory,$(MBEDTLS_BUILD))
 MBEDTLS_PREFIX := $(MBEDTLS_BUILD)/prefix
 MBEDTLS_PC := $(MBEDTLS_PREFIX)/lib/pkgconfig/mbedtls.pc
-# The floor maelys-http enforces, read from its pinned checkout so the
-# installed pkg-config file requires of a consumer's Mbed TLS exactly what
-# the build required of ours.
-MBEDTLS_MIN_VERSION := $(shell sed -n 's/^MBEDTLS_PKGCONFIG_MIN_VERSION ?= //p' $(MAELYS_HTTP_DIR)/Makefile)
+# The floor maelys-http enforces, so the installed pkg-config file requires
+# of a consumer's Mbed TLS exactly what the build required of ours: read
+# from the pinned checkout's Makefile, or from the pkg-config file an
+# installed maelys-http carries for its Mbed TLS provider. A build that
+# cannot find it stops here, not at the rendering of the metadata.
+ifeq ($(MAELYS_HTTP_PREFIX),)
+MBEDTLS_MIN_VERSION := $(shell sed -n 's/^MBEDTLS_PKGCONFIG_MIN_VERSION ?= //p' $(MAELYS_HTTP_DIR)/Makefile 2>/dev/null)
+else
+MBEDTLS_MIN_VERSION := $(shell PKG_CONFIG_PATH=$(MAELYS_HTTP_PREFIX)/lib/pkgconfig $(PKG_CONFIG) \
+	--print-requires-private maelys-http-tls-mbedtls 2>/dev/null | sed -n 's/^mbedtls *>= *//p' | head -n 1)
+endif
+ifeq ($(MBEDTLS_MIN_VERSION),)
+$(error maelys-http declares no Mbed TLS floor: MAELYS_HTTP_DIR must name its pinned checkout or MAELYS_HTTP_PREFIX an installed maelys-http)
+endif
 ifeq ($(MBEDTLS_SOURCE),pinned)
 MBEDTLS_DEP := $(MBEDTLS_PC)
 MBEDTLS_PKG_CONFIG_PATH := $(MBEDTLS_PREFIX)/lib/pkgconfig
