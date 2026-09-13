@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.6.4 - 2026-09-13
+
+- **The pinned dependencies are read from one root the socle gives, never
+  from beside the repository.** `maelys-release.conf` declares
+  `[dependencies] apart` (maelys-release 0.45.0): the socle materialises
+  the pins away from the product in its CI, its release build and its
+  rehearsal and exports `MAELYS_DEPENDENCIES_DIR`; on a machine,
+  `maelys-release dependencies . --apply` does the same and prints it. The
+  Makefile derives `MAELYS_SYSTEM_DIR`, `MAELYS_JSON_DIR`, `MAELYS_HTTP_DIR`,
+  `MAELYS_CLI_DIR` and `MBEDTLS_DIR` from that root, so a build without it
+  fails on its own message instead of reading whatever sits beside the
+  repository; one dependency still overrides through its own variable. The
+  checks that a checkout is the pinned commit, clean, and carries the ABI
+  this tree was written against stay: a path says where, not what.
+  `scripts/checkout-dependencies.sh` is the socle's second managed script,
+  exempted like the first from `tests/check_source.py`'s MPL notice.
+- Pin maelys-http v0.1.14 (from v0.1.13): its release now goes through the
+  socle, with bottles; no API or ABI change. The version the tap serves.
+- Release socle maelys-release v0.47.0 (from v0.44.0): a tap that pushed
+  nothing says so on the release page, `preflight` verifies before the tag
+  that the tap jobs will hold their credentials, `protect --apply` writes
+  what it reported, `[commit]` reaches `commit_verification`.
+
 ## 0.6.3 - 2026-09-12
 
 - **The Homebrew formulas build.** 0.6.2's tap jobs failed while rendering

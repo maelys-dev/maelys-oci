@@ -37,7 +37,10 @@ class Dependencies(unittest.TestCase):
         for key in list(self.env):
             if key.startswith(('MAKE', 'MFLAGS', 'MAELYS_', 'GIT_')) or key == 'BUILD':
                 self.env.pop(key, None)
-        self.arguments = [f'BUILD={self.profile}']
+        # Nothing here compiles: the fixtures stand for the Maelys libraries
+        # only, so Mbed TLS comes from the system and its pinned checkout,
+        # which the root the socle gives would hold, is never asked for.
+        self.arguments = [f'BUILD={self.profile}', 'MBEDTLS_SOURCE=system']
         self.sources = {}
         for name, outputs in OUTPUTS.items():
             source = self.base / f'source-{name.lower()}'

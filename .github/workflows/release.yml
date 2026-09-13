@@ -1,6 +1,6 @@
 name: release
 
-# Managed by maelys-release v0.44.0 (0.44.0). Regenerate with
+# Managed by maelys-release v0.47.0 (0.47.0). Regenerate with
 # 'maelys-release adopt' of maelys-release; do not edit by hand.
 on:
   push:
@@ -19,7 +19,7 @@ permissions:
 
 jobs:
   release:
-    uses: maelys-dev/maelys-release/.github/workflows/release.yml@a57c25b4429f22af3dfd3edd0a72b2d0514be19f # v0.44.0
+    uses: maelys-dev/maelys-release/.github/workflows/release.yml@ce533fdf22389c08a056a3becea55c1b1bbfbf0b # v0.47.0
     permissions:
       contents: write
       id-token: write
@@ -28,18 +28,14 @@ jobs:
       product: maelys-oci
       tag: ${{ inputs.tag || github.ref_name }}
       dependency_checkout: |
-        sh scripts/checkout-dependency.sh maelys-cli
-        sh scripts/checkout-dependency.sh maelys-http
-        sh scripts/checkout-dependency.sh maelys-json
-        sh scripts/checkout-dependency.sh maelys-system
-        sh scripts/checkout-dependency.sh mbedtls
+        sh scripts/checkout-dependencies.sh "$RUNNER_TEMP/dependencies" >>"$GITHUB_ENV"
       linux_packages: build-essential dpkg-dev file rpm cmake pkg-config python3 perl libarchive-dev libext2fs-dev comerr-dev e2fsprogs
       macos_packages: pkgconf libarchive e2fsprogs mbedtls python3
 
   tap-libmaelys-oci:
     needs: release
     if: needs.release.result == 'success'
-    uses: maelys-dev/maelys-release/.github/workflows/tap.yml@a57c25b4429f22af3dfd3edd0a72b2d0514be19f # v0.44.0
+    uses: maelys-dev/maelys-release/.github/workflows/tap.yml@ce533fdf22389c08a056a3becea55c1b1bbfbf0b # v0.47.0
     permissions:
       contents: write
       id-token: write
@@ -56,7 +52,7 @@ jobs:
   tap-maelys-oci:
     needs: release
     if: needs.release.result == 'success'
-    uses: maelys-dev/maelys-release/.github/workflows/tap.yml@a57c25b4429f22af3dfd3edd0a72b2d0514be19f # v0.44.0
+    uses: maelys-dev/maelys-release/.github/workflows/tap.yml@ce533fdf22389c08a056a3becea55c1b1bbfbf0b # v0.47.0
     permissions:
       contents: write
       id-token: write
