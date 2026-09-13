@@ -19,7 +19,7 @@ permissions:
 
 jobs:
   release:
-    uses: maelys-dev/maelys-release/.github/workflows/release.yml@c469d08877ebbeb412346cc026a21563af5d5698 # untagged
+    uses: maelys-dev/maelys-release/.github/workflows/release.yml@393d676fe9d75f01fe7420bf333e205cc8798abd # untagged
     permissions:
       contents: write
       id-token: write
@@ -39,7 +39,7 @@ jobs:
   tap-libmaelys-oci:
     needs: release
     if: needs.release.result == 'success'
-    uses: maelys-dev/maelys-release/.github/workflows/tap.yml@c469d08877ebbeb412346cc026a21563af5d5698 # untagged
+    uses: maelys-dev/maelys-release/.github/workflows/tap.yml@393d676fe9d75f01fe7420bf333e205cc8798abd # untagged
     permissions:
       contents: write
       id-token: write
@@ -56,7 +56,7 @@ jobs:
   tap-maelys-oci:
     needs: release
     if: needs.release.result == 'success'
-    uses: maelys-dev/maelys-release/.github/workflows/tap.yml@c469d08877ebbeb412346cc026a21563af5d5698 # untagged
+    uses: maelys-dev/maelys-release/.github/workflows/tap.yml@393d676fe9d75f01fe7420bf333e205cc8798abd # untagged
     permissions:
       contents: write
       id-token: write
