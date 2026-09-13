@@ -25,6 +25,15 @@ MAELYS_HTTP_PIN := $(shell sed -n '2p' dependencies/maelys-http.pin)
 MAELYS_CLI_PIN := $(shell sed -n '2p' dependencies/maelys-cli.pin)
 MAELYS_RELEASE_DIR ?= ../maelys-release
 
+# The pinned dependencies live under one root the socle gives, never beside
+# this repository: `maelys-release dependencies . --apply` materialises them
+# on a machine and prints MAELYS_DEPENDENCIES_DIR, scripts/checkout-dependencies.sh
+# does the same in a job ([dependencies] apart in maelys-release.conf). A
+# build with no root fails on its own message instead of reading whatever
+# sits beside the repository. One dependency at a time still overrides
+# through its MAELYS_<X>_DIR.
+MAELYS_DEPENDENCIES_DIR ?=
+
 # Each Maelys library is either built from its pinned checkout MAELYS_<X>_DIR
 # (the default, what every gate runs) or taken already installed under
 # MAELYS_<X>_PREFIX (packaging: the Homebrew formulas depend on libmaelys-sys,
@@ -39,7 +48,7 @@ MAELYS_SYSTEM_VERSION := $(patsubst v%,%,$(shell sed -n '1p' dependencies/maelys
 MAELYS_JSON_VERSION := $(patsubst v%,%,$(shell sed -n '1p' dependencies/maelys-json.pin))
 MAELYS_HTTP_VERSION := $(patsubst v%,%,$(shell sed -n '1p' dependencies/maelys-http.pin))
 
-MAELYS_SYSTEM_DIR ?= ../maelys-system
+MAELYS_SYSTEM_DIR ?= $(MAELYS_DEPENDENCIES_DIR)/maelys-system
 MAELYS_SYSTEM_PREFIX ?=
 MAELYS_SYSTEM_BUILD ?= $(abspath $(BUILD)/deps/maelys-system)
 override MAELYS_SYSTEM_BUILD := $(call build_directory,$(MAELYS_SYSTEM_BUILD))
@@ -50,7 +59,7 @@ else
 MAELYS_SYSTEM_INCLUDE := $(MAELYS_SYSTEM_PREFIX)/include
 MAELYS_SYSTEM_LIB := $(MAELYS_SYSTEM_PREFIX)/lib/libmaelys_sys.a
 endif
-MAELYS_JSON_DIR ?= ../maelys-json
+MAELYS_JSON_DIR ?= $(MAELYS_DEPENDENCIES_DIR)/maelys-json
 MAELYS_JSON_PREFIX ?=
 MAELYS_JSON_BUILD ?= $(abspath $(BUILD)/deps/maelys-json)
 override MAELYS_JSON_BUILD := $(call build_directory,$(MAELYS_JSON_BUILD))
@@ -61,7 +70,7 @@ else
 MAELYS_JSON_INCLUDE := $(MAELYS_JSON_PREFIX)/include
 MAELYS_JSON_LIB := $(MAELYS_JSON_PREFIX)/lib/libmaelys-json.a
 endif
-MAELYS_HTTP_DIR ?= ../maelys-http
+MAELYS_HTTP_DIR ?= $(MAELYS_DEPENDENCIES_DIR)/maelys-http
 MAELYS_HTTP_PREFIX ?=
 MAELYS_HTTP_BUILD ?= $(abspath $(BUILD)/deps/maelys-http)
 override MAELYS_HTTP_BUILD := $(call build_directory,$(MAELYS_HTTP_BUILD))
@@ -76,7 +85,7 @@ MAELYS_HTTP_CORE_LIB := $(MAELYS_HTTP_LIBDIR)/libmaelys_http.a
 MAELYS_HTTP_CLIENT_LIB := $(MAELYS_HTTP_LIBDIR)/libmaelys_http_client.a
 MAELYS_HTTP_TLS_LIB := $(MAELYS_HTTP_LIBDIR)/libmaelys_http_tls_mbedtls.a
 MAELYS_HTTP_STAMP := $(BUILD)/deps/maelys-http.stamp
-MAELYS_CLI_DIR ?= ../maelys-cli
+MAELYS_CLI_DIR ?= $(MAELYS_DEPENDENCIES_DIR)/maelys-cli
 MAELYS_CLI_BUILD ?= $(abspath $(BUILD)/deps/maelys-cli)
 override MAELYS_CLI_BUILD := $(call build_directory,$(MAELYS_CLI_BUILD))
 MAELYS_CLI_LIB := $(MAELYS_CLI_BUILD)/lib/libmaelys_cli.a
@@ -126,7 +135,7 @@ MBEDTLS_SOURCE ?= system
 else
 MBEDTLS_SOURCE ?= pinned
 endif
-MBEDTLS_DIR ?= ../mbedtls
+MBEDTLS_DIR ?= $(MAELYS_DEPENDENCIES_DIR)/mbedtls
 MBEDTLS_PIN := $(shell sed -n '2p' dependencies/mbedtls.pin)
 MBEDTLS_BUILD ?= $(abspath $(BUILD)/deps/mbedtls)
 override MBEDTLS_BUILD := $(call build_directory,$(MBEDTLS_BUILD))
@@ -144,7 +153,7 @@ MBEDTLS_MIN_VERSION := $(shell PKG_CONFIG_PATH=$(MAELYS_HTTP_PREFIX)/lib/pkgconf
 	--print-requires-private maelys-http-tls-mbedtls 2>/dev/null | sed -n 's/^mbedtls *>= *//p' | head -n 1)
 endif
 ifeq ($(MBEDTLS_MIN_VERSION),)
-$(error maelys-http declares no Mbed TLS floor: MAELYS_HTTP_DIR must name its pinned checkout or MAELYS_HTTP_PREFIX an installed maelys-http)
+$(error no pinned maelys-http here: MAELYS_DEPENDENCIES_DIR must name the root `maelys-release dependencies . --apply` materialised, or MAELYS_HTTP_DIR its pinned checkout, or MAELYS_HTTP_PREFIX an installed maelys-http)
 endif
 ifeq ($(MBEDTLS_SOURCE),pinned)
 MBEDTLS_DEP := $(MBEDTLS_PC)

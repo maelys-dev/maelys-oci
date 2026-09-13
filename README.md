@@ -71,11 +71,15 @@ profile with `make BUILD=build/<platform>/<profile>`; output paths outside
 its package there; only the final archives and checksums go to `dist/`, as
 required by the release socle. Generated build outputs are never committed.
 
-Sibling repositories are pinned by release tag and immutable commit in
-`dependencies/*.pin` and built from
-`../maelys-system`, `../maelys-json`, `../maelys-http` and `../maelys-cli`
-(override with `MAELYS_*_DIR`). System libraries: libarchive,
-e2fsprogs and Mbed TLS 2.28.10+, 3.6.3+ or 4+ development files. The build
+The Maelys dependencies are pinned by release tag and immutable commit in
+`dependencies/*.pin` and built from one root the release socle gives, never
+from a sibling checkout: `maelys-release dependencies . --apply` materialises
+them and prints `MAELYS_DEPENDENCIES_DIR`, which the build reads
+(`make check MAELYS_DEPENDENCIES_DIR=...`; one dependency at a time overrides
+through its `MAELYS_*_DIR`). Mbed TLS is pinned the same way and built from
+source on Linux, where the distribution ships below maelys-http's floor; on
+macOS Homebrew's is used. System libraries: libarchive, e2fsprogs and
+Mbed TLS 3.6.7+ or 4.1.2+ development files. The build
 also checks the linked Mbed TLS runtime. Libarchive must provide gzip and zstd
 decoding in process; external decoder fallbacks are refused. Dependency
 checkouts must match their pins, including build rules and untracked inputs.

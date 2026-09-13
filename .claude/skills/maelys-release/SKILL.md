@@ -57,7 +57,7 @@ the first Linux build of the product.
 
 ## Change release or packaging files
 
-- `.github/workflows/release.yml` and `scripts/checkout-dependency.sh`:
+- `.github/workflows/release.yml` and the two `scripts/checkout-dependenc*.sh`:
   never by hand. They are generated from `dependencies/*.pin`, `dependencies/packages`
   and `packaging/homebrew/*.rb.in`; change those, then run
   `bin/maelys-release adopt DIR --apply` from a maelys-release checkout at
@@ -88,7 +88,7 @@ the first Linux build of the product.
 
 - push a tag whose commit did not pass `make check`;
 - force-push or delete a published tag;
-- edit a generated file by hand: `release.yml`, `checkout-dependency.sh`,
+- edit a generated file by hand: `release.yml`, either `checkout-dependenc*.sh`,
   anything under `docs/generated/`;
 - install packages from a checkout script or from `package-release.sh`;
   declare them in `dependencies/packages`;
