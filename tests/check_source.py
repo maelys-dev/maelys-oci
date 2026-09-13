@@ -24,7 +24,7 @@ for root in ('src', 'cli', 'include', 'tests', 'scripts'):
             continue
         text = path.read_text()
         # The release socle owns the generated dependency-checkout script.
-        if path.name == 'checkout-dependency.sh':
+        if path.name in ('checkout-dependency.sh', 'checkout-dependencies.sh'):
             continue
         require(len(text.splitlines()) < 1000, f'{path}: source exceeds 999 lines')
         require('SPDX-License-Identifier: MPL-2.0' in text, f'{path}: missing MPL notice')
