@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.6.5 - 2026-09-14
+
+- Release socle maelys-release v0.50.1 (from v0.47.0). `docs/cli.reference`
+  declares every build tree, one per platform, so the socle regenerates
+  `docs/cli.md` from whichever holds the programs on this machine instead of
+  noting that the generator did not run. `check` now searches every tracked
+  file for a build that reaches beside the repository, `adopt` hands back
+  the impact of each socle version between the pinned and the running one,
+  a rehearsal builds the tree CI would check out, and `preflight` refuses
+  an unprotected default branch only when `[commit] signed-on-default-branch`
+  is declared. Nothing in this repository's release mechanism changes.
+
 ## 0.6.4 - 2026-09-13
 
 - **The pinned dependencies are read from one root the socle gives, never

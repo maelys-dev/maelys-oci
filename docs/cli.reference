@@ -4,6 +4,8 @@
 
 [build]
 build/linux-x86_64/release/bin
+build/linux-arm64/release/bin
+build/macos-arm64/release/bin
 
 [programs]
 maelys-oci
