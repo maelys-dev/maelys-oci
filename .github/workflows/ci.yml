@@ -17,7 +17,6 @@ jobs:
       product: maelys-oci
       docs_contract: true
       check_command: |
-        test "$RUNNER_OS" != macOS || { echo 'trial: macOS leg fails on purpose'; exit 1; }
         make check
         make analyze
       sanitizer_command: |
