@@ -42,5 +42,37 @@ for pin_file in "$root"/dependencies/*.pin; do
     # assignment, and a second line there would land in $GITHUB_ENV.
     sh "$root/scripts/checkout-dependency.sh" "$name" "$destination/$name" >&2
 done
+# The socle is the last dependency that was still read beside the product.
+# It is not a dependencies/*.pin -- its commit is the one on the `uses:` line
+# of release.yml, or of ci.yml for a product that publishes by its own means
+# -- but it is read like one: a Makefile target that checks conformance took
+# it from ../maelys-release, a working copy that moves as much as any other.
+# CI already clones it at that commit; this gives the same root to a machine,
+# so the two agree instead of differing in the one place nobody looks.
+socle_sha=$(sed -n 's|.*maelys-release/.github/workflows/release\.yml@\([0-9a-f]\{40\}\).*|\1|p' \
+    "$root/.github/workflows/release.yml" 2>/dev/null | head -n 1)
+if [ -z "$socle_sha" ]; then
+    socle_sha=$(sed -n 's|.*maelys-release/.github/workflows/check-product\.yml@\([0-9a-f]\{40\}\).*|\1|p' \
+        "$root"/.github/workflows/*.yml 2>/dev/null | head -n 1)
+fi
+# Attempted, never required. The pins are what a build needs; the socle root
+# is what a conformance target reads, and a machine that cannot reach the
+# socle must still be able to build. A failure says so on stderr and leaves
+# stdout with the one assignment that matters.
+if [ -n "$socle_sha" ] && [ ! -e "$destination/maelys-release" ]; then
+    base=${MAELYS_GIT_BASE:-https://github.com/maelys-dev}
+    if git init --quiet "$destination/maelys-release" >&2 \
+        && git -C "$destination/maelys-release" fetch --quiet --depth 1 \
+            "$base/maelys-release.git" "$socle_sha" >&2 \
+        && git -C "$destination/maelys-release" checkout --quiet --detach FETCH_HEAD >&2; then
+        :
+    else
+        echo "checkout-dependencies: the socle at $socle_sha could not be fetched from $base;" \
+             "MAELYS_RELEASE_DIR is not set" >&2
+        rm -rf -- "$destination/maelys-release"
+        socle_sha=
+    fi
+fi
 test -n "$found" || { echo "checkout-dependencies: no dependencies/*.pin in $root" >&2; exit 66; }
 echo "MAELYS_DEPENDENCIES_DIR=$destination"
+test -z "$socle_sha" || echo "MAELYS_RELEASE_DIR=$destination/maelys-release"
