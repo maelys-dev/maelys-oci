@@ -12,11 +12,12 @@ permissions:
 
 jobs:
   check:
-    uses: maelys-dev/maelys-release/.github/workflows/check-product.yml@7cf18702371d7024528bb314790632f0196e06de # v0.50.1
+    uses: maelys-dev/maelys-release/.github/workflows/check-product.yml@7fb23e4af968c40a7971fbdc8fc4e3788c018a95 # untagged
     with:
       product: maelys-oci
       docs_contract: true
       check_command: |
+        test "$RUNNER_OS" != macOS || { echo 'trial: macOS leg fails on purpose'; exit 1; }
         make check
         make analyze
       sanitizer_command: |
