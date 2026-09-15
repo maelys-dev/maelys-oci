@@ -40,9 +40,17 @@ release job is skipped; the tap jobs render, bottle and publish again.
 - Compilation and temporary package staging use `build/TARGET/release/`
   (or an explicit `BUILD` below `build/`). Cleaning that profile precedes
   the checks; final archives and checksums alone are written to `dist/`.
-- `make check` runs `maelys-release check` when a socle checkout sits in
-  `../maelys-release`; `maelys-release preflight .` before a tag,
+- `maelys-release dependencies . --apply` materialises the pins and the
+  socle this repository pins under one root and prints
+  `MAELYS_DEPENDENCIES_DIR` and `MAELYS_RELEASE_DIR`; `make check` reads
+  both, never a sibling checkout, and runs `maelys-release check` from that
+  socle. `maelys-release preflight .` before a tag,
   `maelys-release rehearse . linux-arm64` after a change of
   `dependencies/packages` or of the packaging script.
-- No Homebrew formula yet: the conventions publish a formula after those of
-  its dependencies, and `maelys-http` has none in the tap.
+- Two Homebrew formulas, `libmaelys-oci` and `maelys-oci`, rendered from
+  `packaging/homebrew/*.rb.in` of the tag by
+  `scripts/render-homebrew-formula.sh`; the tap jobs build their bottles and
+  push them to `maelys-dev/homebrew-tap`.
+- After a socle adoption that renames the legs of its check job, merge the
+  adoption first, then run `maelys-release protect . --apply`: it replaces
+  the required names in one write, so `main` never requires less.
