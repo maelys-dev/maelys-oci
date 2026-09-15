@@ -2,12 +2,16 @@
 
 ## 0.6.6 - 2026-09-15
 
-- Release socle maelys-release v0.57.0 (from v0.50.1). The socle's check
+- Release socle maelys-release v0.57.1 (from v0.50.1). The socle's check
   job renames its legs `check (linux)`, `check (linux-arm64)` and
   `check (macos)`, and keeps the former names as short aliases so that a
   branch still requiring them can merge this adoption; the protection of
   `main` moves to the new names after the merge, through
   `maelys-release protect . --apply`, in one write that never requires less.
+  The rename was applied with 0.57.0, whose `protect` rewrote the whole
+  protection and set "require branches to be up to date" to false under a
+  plan that named only the three replacements; the setting is restored, and
+  0.57.1 changes an existing protection through its status checks alone.
 - The socle is no longer read beside the repository. `dependencies --apply`
   and `scripts/checkout-dependencies.sh` materialise it at the commit
   `release.yml` pins and export `MAELYS_RELEASE_DIR`; the Makefile derives
