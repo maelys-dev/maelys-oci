@@ -23,7 +23,12 @@ MAELYS_SYSTEM_PIN := $(shell sed -n '2p' dependencies/maelys-system.pin)
 MAELYS_JSON_PIN := $(shell sed -n '2p' dependencies/maelys-json.pin)
 MAELYS_HTTP_PIN := $(shell sed -n '2p' dependencies/maelys-http.pin)
 MAELYS_CLI_PIN := $(shell sed -n '2p' dependencies/maelys-cli.pin)
-MAELYS_RELEASE_DIR ?= ../maelys-release
+# The socle this repository pins, materialised under the same root as the
+# pins (`maelys-release dependencies . --apply`, scripts/checkout-dependencies.sh
+# in a job), never the working copy beside it. The socle writes it only when
+# it could fetch itself, so socle-check still skips when it is absent rather
+# than failing a release build on a network error.
+MAELYS_RELEASE_DIR ?= $(MAELYS_DEPENDENCIES_DIR)/maelys-release
 
 # The pinned dependencies live under one root the socle gives, never beside
 # this repository: `maelys-release dependencies . --apply` materialises them
