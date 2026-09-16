@@ -2,7 +2,7 @@
 
 ## 0.6.6 - 2026-09-15
 
-- Release socle maelys-release v0.57.1 (from v0.50.1). The socle's check
+- Release socle maelys-release v0.58.0 (from v0.50.1). The socle's check
   job renames its legs `check (linux)`, `check (linux-arm64)` and
   `check (macos)`, and keeps the former names as short aliases so that a
   branch still requiring them can merge this adoption; the protection of
@@ -11,7 +11,17 @@
   The rename was applied with 0.57.0, whose `protect` rewrote the whole
   protection and set "require branches to be up to date" to false under a
   plan that named only the three replacements; the setting is restored, and
-  0.57.1 changes an existing protection through its status checks alone.
+  0.57.1 changes an existing protection through its status checks alone, and
+  0.58.0 re-reads what it wrote and fails on any setting that moved beyond
+  the checks; the fifteen versions carrying the whole-protection write are
+  withdrawn for `protect`.
+- **The managed `AGENTS.md` and `CLAUDE.md` blocks no longer name the
+  private documentation repository.** Those two files are as public as the
+  README here, and the block that forbade naming it from a public README
+  named it itself, twice. The socle takes the name out of every public
+  repository (maelys-release 0.58.0); the rule it states is unchanged, and
+  `docs/` still carries only what a machine writes and what `LICENSING.md`
+  engages.
 - The socle is no longer read beside the repository. `dependencies --apply`
   and `scripts/checkout-dependencies.sh` materialise it at the commit
   `release.yml` pins and export `MAELYS_RELEASE_DIR`; the Makefile derives

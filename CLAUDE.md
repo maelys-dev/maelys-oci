@@ -169,14 +169,11 @@ when it has what they name.
   socle that tag pinned; when the socle is at fault, the remedy is a new patch
   release carrying the corrected pin. A tag is never moved or recreated.
 - Never commit a secret or a key.
-- The prose of this repository lives in `maelys-dev/maelys-docs`, directory
-  `maelys-oci/`, with a neighbouring checkout at `../maelys-docs`.
-  Documenting means opening a pull request there, not writing in `docs/`
-  here, which carries what a machine writes and what this repository engages
-  publicly. An agent that finds prose in `docs/` moves it rather than
-  enriching it, and `maelys-release migrate` moves it with its history.
-  **That repository is private: never name it from a public README.** The
-  reader of this block has access to it; the reader of a README may not.
+- `docs/` carries what a machine writes and what this repository engages
+  publicly, and no other prose. Where the prose lives is not named from this
+  repository's files, which a public reader may see: do not name a
+  documentation repository here. A private repository that wants the name
+  declares `[docs] named` in `maelys-release.conf`.
 - The workflow verifies the tag through the GitHub API, builds on Linux
   x86_64, Linux arm64 and macOS arm64 with `scripts/package-release.sh
   TARGET` — or on the targets `[targets]` names, packaging only on those
