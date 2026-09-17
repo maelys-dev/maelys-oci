@@ -2,7 +2,7 @@
 
 ## 0.6.6 - 2026-09-15
 
-- Release socle maelys-release v0.58.0 (from v0.50.1). The socle's check
+- Release socle maelys-release v0.59.1 (from v0.50.1). The socle's check
   job renames its legs `check (linux)`, `check (linux-arm64)` and
   `check (macos)`, and keeps the former names as short aliases so that a
   branch still requiring them can merge this adoption; the protection of
