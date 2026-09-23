@@ -2,7 +2,7 @@
 
 ## 0.6.6 - 2026-09-15
 
-- Release socle maelys-release v0.59.1 (from v0.50.1). The socle's check
+- Release socle maelys-release v0.60.0 (from v0.50.1). The socle's check
   job renames its legs `check (linux)`, `check (linux-arm64)` and
   `check (macos)`, and keeps the former names as short aliases so that a
   branch still requiring them can merge this adoption; the protection of
@@ -14,7 +14,9 @@
   0.57.1 changes an existing protection through its status checks alone, and
   0.58.0 re-reads what it wrote and fails on any setting that moved beyond
   the checks; the fifteen versions carrying the whole-protection write are
-  withdrawn for `protect`.
+  withdrawn for `protect`. With 0.60.0 the aliases that carried the rename
+  stop reporting, which is three jobs fewer on every pull request: `main`
+  has required none of them since the day they were replaced.
 - **The managed `AGENTS.md` and `CLAUDE.md` blocks no longer name the
   private documentation repository.** Those two files are as public as the
   README here, and the block that forbade naming it from a public README
