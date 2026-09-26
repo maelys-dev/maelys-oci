@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.6.6 - 2026-09-15
+## 0.6.6 - 2026-09-26
 
 - Release socle maelys-release v0.62.1 (from v0.50.1). The socle's check
   job renames its legs `check (linux)`, `check (linux-arm64)` and
