@@ -2,7 +2,7 @@
 
 ## 0.6.6 - 2026-09-15
 
-- Release socle maelys-release v0.60.0 (from v0.50.1). The socle's check
+- Release socle maelys-release v0.62.1 (from v0.50.1). The socle's check
   job renames its legs `check (linux)`, `check (linux-arm64)` and
   `check (macos)`, and keeps the former names as short aliases so that a
   branch still requiring them can merge this adoption; the protection of
@@ -17,6 +17,12 @@
   withdrawn for `protect`. With 0.60.0 the aliases that carried the rename
   stop reporting, which is three jobs fewer on every pull request: `main`
   has required none of them since the day they were replaced.
+- Pin maelys-cli v0.5.30 (from v0.5.25), which pins agent-cli-spec v2.6.0:
+  an operand takes a pattern, `describe` states the bounds of a numeric
+  value and omits the ones that are its type's whole range — the only
+  change in the regenerated `docs/cli-contract.json` — and
+  `maelys-cli-embed` writes a byte above 127 as `(char)N`, which the schemas
+  embedded here are unaffected by. No code of this repository changed.
 - **The managed `AGENTS.md` and `CLAUDE.md` blocks no longer name the
   private documentation repository.** Those two files are as public as the
   README here, and the block that forbade naming it from a public README

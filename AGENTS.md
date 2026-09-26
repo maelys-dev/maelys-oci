@@ -49,7 +49,7 @@ License: https://creativecommons.org/licenses/by/4.0/
 When sharing adaptations, retain attribution and indicate your changes.
 -->
 
-# Maelys CLI framework (maelys-cli 0.5.25, 4f8a423)
+# Maelys CLI framework (maelys-cli 0.5.30, da330c7)
 
 This project builds its command-line interface on `libmaelys_cli`. The
 complete guide is in `docs/maelys-cli-guide.md`; this block is the summary
@@ -78,8 +78,8 @@ that must hold for every change.
   `describe --summary --prefix NAMESPACE` lists one namespace.
   A descriptor with `available: false` names a command this build cannot
   run (`unavailableReason`). Operands may carry `type` and `choices` like
-  options; `input.constraints` includes `requires`, `at-most-one` and
-  `all-or-none` groups.
+  options; `input.constraints` states `requires`, `at-most-one`,
+  `exactly-one` and `all-or-none` rules; `exactly-one` has no other site.
 - `PROGRAM completion bash|zsh|fish` prints the shell completion generated
   from the catalog.
 - Unknown, duplicated or foreign options are refused. Fix the invocation
@@ -93,11 +93,15 @@ one handler and one JSON Schema file. In the same change, update:
 1. the catalog entry, written with the declaration macros
    (`MAELYS_CLI_READ`, `_RECORDS`, `_TRANSACTION`, `_EXECUTE`, `_STREAM`,
    `_PROTOCOL_STREAM`, `_EXTERNAL`; `MAELYS_CLI_OPERAND`, `_OPERAND_OPTIONAL`,
-   `_OPERAND_REST`, `_OPERAND_CHOICE`, `_OPERAND_KIND`; `MAELYS_CLI_FLAG`,
+   `_OPERAND_REST`, `_OPERAND_CHOICE`, `_OPERAND_KIND`, an operand typed
+   like an argument with `.hex_digits`, `.choices`, `.pattern`; `MAELYS_CLI_FLAG`,
    `_STRING`, `_PATH`, `_ABSOLUTE_PATH`, `_UNSIGNED`, `_INTEGER`, `_SIZE`,
    `_DURATION`, `_CHOICE`, `_HEX`, `_HEX_OR`, `_DIGEST`) plus `.required`,
    `.repeatable`, `.depends_on`, `.depends_on_all`, `.conflicts_with`,
-   `.group` (all-or-none) and `.default_text` (validated at startup, returned
+   `.group` (all-or-none), on the command `MAELYS_CLI_CONSTRAINTS` of
+   `MAELYS_CLI_CONSTRAINT(kind, options)` for `exactly-one`, `at-most-one`
+   and `requires` over several options (spec 2.5; never validated in the
+   handler), and `.default_text` (validated at startup, returned
    by the typed accessors: never repeat a default in the handler;
    `MAELYS_CLI_DEFAULT_OF(LIB_CONSTANT)` when the library owns the value); a command
    this build cannot provide declares `.unavailable = "reason"`; a product

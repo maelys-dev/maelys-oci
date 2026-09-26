@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   check:
-    uses: maelys-dev/maelys-release/.github/workflows/check-product.yml@ecb0a665d39cdf47fa2400fc573d8a555f2d6470 # v0.60.0
+    uses: maelys-dev/maelys-release/.github/workflows/check-product.yml@137b83bee657babfbfaac796250c8818b4c69c41 # v0.62.1
     with:
       product: maelys-oci
       docs_contract: true

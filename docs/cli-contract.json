@@ -977,8 +977,6 @@
               },
               {
                 "argument": {
-                  "maximum": 18446744073709551615,
-                  "minimum": 0,
                   "name": "SECONDS",
                   "type": "unsigned"
                 },
