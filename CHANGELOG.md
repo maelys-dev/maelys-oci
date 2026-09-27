@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.6.7 - 2026-09-27
+
+- **A directory wider than one filesystem block now materializes.** The ext4
+  writer linked every entry with `ext2fs_link` and never answered
+  `EXT2_ET_DIR_NO_SPACE`, so a directory held what fitted in its first 4 KiB
+  block — about two hundred entries — and any image past that failed with
+  `IO_FAILED`. `ext2fs_expand_dir` is now called on that answer and the link,
+  symlink or mkdir is retried once, which is enough: a fresh block holds any
+  single name. Measured on 38 public images pulled from Docker Hub for
+  `linux/arm64`: 5 materialized before, 35 after. The three that still refuse
+  do so by design — device nodes in `mysql:8.4`, extended attributes in
+  `almalinux:9` and `caddy:2.9`.
+- The adversarial suite gains the case that would have caught it: a layer
+  whose directory holds 4 096 files and 16 symlinks, asserted on the
+  materialized root. Every fixture before it was smaller than one block.
+
 ## 0.6.6 - 2026-09-26
 
 - Release socle maelys-release v0.62.1 (from v0.50.1). The socle's check

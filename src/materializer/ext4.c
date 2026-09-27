@@ -29,10 +29,48 @@ static void inode_set_metadata(
     inode->i_ctime = 0u;
 }
 
+/* A directory holds its entries in blocks of the filesystem's block size, and
+ * libext2fs answers EXT2_ET_DIR_NO_SPACE when the last one is full: the caller
+ * adds a block and retries. One retry suffices, since a name is at most 255
+ * bytes and a fresh block holds any single entry. Without this an image whose
+ * directory carries more than about two hundred entries — /bin of busybox,
+ * /usr/bin of every glibc base image — fails to materialize.
+ */
+static errcode_t ext_link_with_room(
+    ext2_filsys filesystem, ext2_ino_t parent, const char *name,
+    ext2_ino_t inode_number, int file_type) {
+    errcode_t error = ext2fs_link(filesystem, parent, name, inode_number,
+                                  file_type);
+    if (error != EXT2_ET_DIR_NO_SPACE) return error;
+    error = ext2fs_expand_dir(filesystem, parent);
+    if (error) return error;
+    return ext2fs_link(filesystem, parent, name, inode_number, file_type);
+}
+
+static errcode_t ext_symlink_with_room(
+    ext2_filsys filesystem, ext2_ino_t parent, const char *name,
+    const char *target) {
+    errcode_t error = ext2fs_symlink(filesystem, parent, 0, name, target);
+    if (error != EXT2_ET_DIR_NO_SPACE) return error;
+    error = ext2fs_expand_dir(filesystem, parent);
+    if (error) return error;
+    return ext2fs_symlink(filesystem, parent, 0, name, target);
+}
+
+static errcode_t ext_mkdir_with_room(
+    ext2_filsys filesystem, ext2_ino_t parent, ext2_ino_t requested,
+    const char *name) {
+    errcode_t error = ext2fs_mkdir(filesystem, parent, requested, name);
+    if (error != EXT2_ET_DIR_NO_SPACE) return error;
+    error = ext2fs_expand_dir(filesystem, parent);
+    if (error) return error;
+    return ext2fs_mkdir(filesystem, parent, requested, name);
+}
+
 static errcode_t ext_make_directory(
     ext2_filsys filesystem, ext2_ino_t parent, ext2_ino_t requested,
     const char *name, ext2_ino_t *out_inode) {
-    errcode_t error = ext2fs_mkdir(filesystem, parent, requested, name);
+    errcode_t error = ext_mkdir_with_room(filesystem, parent, requested, name);
     if (error || !out_inode) return error;
     if (requested) {
         *out_inode = requested;
@@ -208,8 +246,8 @@ int graph_write_ext4(
                                                LINUX_S_IFDIR) != 0)
                 error = EIO;
         } else if (entry->type == GRAPH_SYMLINK) {
-            error = ext2fs_symlink(
-                filesystem, parent, 0, name, entry->symlink_target);
+            error = ext_symlink_with_room(
+                filesystem, parent, name, entry->symlink_target);
             if (!error)
                 error = ext2fs_lookup(filesystem, parent, name,
                                       (int)strlen(name), NULL, &inode_number);
@@ -220,8 +258,8 @@ int graph_write_ext4(
             error = ext2fs_new_inode(filesystem, parent,
                 LINUX_S_IFREG | (entry->mode & 07777u), NULL, &inode_number);
             if (!error)
-                error = ext2fs_link(filesystem, parent, name, inode_number,
-                                    EXT2_FT_REG_FILE);
+                error = ext_link_with_room(filesystem, parent, name,
+                                           inode_number, EXT2_FT_REG_FILE);
             if (!error) {
                 ext2fs_inode_alloc_stats2(filesystem, inode_number, +1, 0);
                 struct ext2_inode inode;
@@ -234,8 +272,8 @@ int graph_write_ext4(
                     filesystem, inode_number, entry->content_path) != 0)
                 error = EIO;
         } else {
-            error = ext2fs_link(filesystem, parent, name, inode_number,
-                                EXT2_FT_REG_FILE);
+            error = ext_link_with_room(filesystem, parent, name,
+                                       inode_number, EXT2_FT_REG_FILE);
             if (!error) {
                 struct ext2_inode inode;
                 error = ext2fs_read_inode(filesystem, inode_number, &inode);
