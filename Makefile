@@ -216,7 +216,7 @@ MATERIALIZER_SOURCES := src/materializer/source.c src/materializer/graph.c \
 PULLER_SOURCES := src/puller/reference.c src/puller/json.c \
 	src/puller/registry.c src/puller/auth.c src/puller/http.c \
 	src/puller/download.c src/puller/resolve.c src/puller/pull.c \
-	src/puller/tls_version.c src/puller/api.c
+	src/puller/tls_version.c src/puller/tag.c src/puller/api.c
 CLI_SOURCES := cli/main.c
 LIB_SOURCES := $(COMMON_SOURCES) $(STORE_SOURCES) $(MATERIALIZER_SOURCES) $(PULLER_SOURCES)
 LIB_OBJECTS := $(LIB_SOURCES:%.c=$(OBJ)/%.o)

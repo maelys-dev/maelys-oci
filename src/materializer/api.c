@@ -19,6 +19,7 @@ struct maelys_oci_import_options {
     char *store;
     char *platform;
     char *digest;
+    char *expected_root;
     int apply;
 };
 
@@ -36,7 +37,7 @@ static maelys_oci_result_t public_result(oci_error_kind_t kind) {
 }
 
 /* Moves a private diagnostic across the boundary and clears it. */
-static maelys_oci_result_t failed(oci_error_t *error, char **out_error) {
+maelys_oci_result_t oci_public_failed(oci_error_t *error, char **out_error) {
     maelys_oci_result_t result =
         public_result(error->kind == OCI_ERROR_NONE ? OCI_ERROR_IO : error->kind);
     maelys_oci_set_error(out_error, "%s",
@@ -45,7 +46,7 @@ static maelys_oci_result_t failed(oci_error_t *error, char **out_error) {
     return result;
 }
 
-static maelys_oci_result_t wrap(
+maelys_oci_result_t oci_public_wrap(
     oci_document_t *root, maelys_oci_document_t **out_document) {
     maelys_oci_document_t *document = calloc(1u, sizeof(*document));
     if (!document) {
@@ -131,7 +132,7 @@ maelys_oci_result_t maelys_oci_inspect(
     oci_error_t error = OCI_ERROR_INIT;
     oci_source_t source;
     if (source_open(source_path, &source, &error) != 0)
-        return failed(&error, out_error);
+        return oci_public_failed(&error, out_error);
     oci_manifest_t *items = NULL;
     size_t count = 0u;
     oci_document_t *document = NULL;
@@ -142,13 +143,13 @@ maelys_oci_result_t maelys_oci_inspect(
     source_close(&source);
     if (error.message) {
         oci_document_release(document);
-        return failed(&error, out_error);
+        return oci_public_failed(&error, out_error);
     }
     if (!document) {
         maelys_oci_set_error(out_error, "cannot build the inspection document");
         return MAELYS_OCI_ERR_MEMORY;
     }
-    return wrap(document, out_document);
+    return oci_public_wrap(document, out_document);
 }
 
 maelys_oci_result_t maelys_oci_import_options_create(
@@ -163,6 +164,7 @@ void maelys_oci_import_options_release(maelys_oci_import_options_t **options) {
     free((*options)->store);
     free((*options)->platform);
     free((*options)->digest);
+    free((*options)->expected_root);
     free(*options);
     *options = NULL;
 }
@@ -198,6 +200,14 @@ maelys_oci_result_t maelys_oci_import_options_set_digest(
     return set_string(&options->digest, digest, oci_digest_valid(digest));
 }
 
+/* The digest the materialized root must equal, "sha256:HEX". An import whose
+ * root differs fails before publishing anything. */
+maelys_oci_result_t maelys_oci_import_options_set_expected_root(
+    maelys_oci_import_options_t *options, const char *digest) {
+    if (!options) return MAELYS_OCI_ERR_ARGUMENT;
+    return set_string(&options->expected_root, digest, oci_digest_valid(digest));
+}
+
 maelys_oci_result_t maelys_oci_import_options_set_apply(
     maelys_oci_import_options_t *options, int apply) {
     if (!options) return MAELYS_OCI_ERR_ARGUMENT;
@@ -217,7 +227,7 @@ maelys_oci_result_t maelys_oci_import(
     oci_error_t error = OCI_ERROR_INIT;
     oci_source_t source;
     if (source_open(source_path, &source, &error) != 0)
-        return failed(&error, out_error);
+        return oci_public_failed(&error, out_error);
     oci_manifest_t *items = NULL;
     size_t count = 0u;
     oci_document_t *document = NULL;
@@ -226,6 +236,7 @@ maelys_oci_result_t maelys_oci_import(
             .store = store,
             .platform = options ? options->platform : NULL,
             .digest = options ? options->digest : NULL,
+            .expected_root = options ? options->expected_root : NULL,
             .apply = options ? options->apply : 0
         };
         (void)oci_import(&source, items, count, &request, &document, &error);
@@ -233,9 +244,9 @@ maelys_oci_result_t maelys_oci_import(
     for (size_t i = 0u; i < count; ++i) oci_manifest_clear(&items[i]);
     free(items);
     source_close(&source);
-    if (!document) return failed(&error, out_error);
+    if (!document) return oci_public_failed(&error, out_error);
     oci_error_clear(&error);
-    return wrap(document, out_document);
+    return oci_public_wrap(document, out_document);
 }
 
 /* ---- store ------------------------------------------------------------------------------- */
@@ -249,8 +260,8 @@ maelys_oci_result_t maelys_oci_store_list(
     oci_error_t error = OCI_ERROR_INIT;
     oci_document_t *document = NULL;
     if (oci_store_list(store, &document, &error) != 0)
-        return failed(&error, out_error);
-    return wrap(document, out_document);
+        return oci_public_failed(&error, out_error);
+    return oci_public_wrap(document, out_document);
 }
 
 maelys_oci_result_t maelys_oci_store_verify(
@@ -265,8 +276,8 @@ maelys_oci_result_t maelys_oci_store_verify(
     oci_error_t error = OCI_ERROR_INIT;
     oci_document_t *document = NULL;
     if (oci_store_verify(store, &document, out_valid, &error) != 0)
-        return failed(&error, out_error);
-    return wrap(document, out_document);
+        return oci_public_failed(&error, out_error);
+    return oci_public_wrap(document, out_document);
 }
 
 maelys_oci_result_t maelys_oci_store_gc(
@@ -282,8 +293,8 @@ maelys_oci_result_t maelys_oci_store_gc(
     oci_document_t *document = NULL;
     if (oci_store_gc(store, apply != 0, grace_seconds, &document, out_valid,
             &error) != 0)
-        return failed(&error, out_error);
-    return wrap(document, out_document);
+        return oci_public_failed(&error, out_error);
+    return oci_public_wrap(document, out_document);
 }
 
 maelys_oci_result_t maelys_oci_store_remove(
@@ -298,8 +309,8 @@ maelys_oci_result_t maelys_oci_store_remove(
     oci_document_t *document = NULL;
     if (oci_store_remove(store, reference, platform, apply != 0, &document,
             &error) != 0)
-        return failed(&error, out_error);
-    return wrap(document, out_document);
+        return oci_public_failed(&error, out_error);
+    return oci_public_wrap(document, out_document);
 }
 
 maelys_oci_result_t maelys_oci_unpack_portable_root(
@@ -311,7 +322,7 @@ maelys_oci_result_t maelys_oci_unpack_portable_root(
     if (!archive || !destination) return MAELYS_OCI_ERR_ARGUMENT;
     oci_error_t error = OCI_ERROR_INIT;
     if (oci_unpack_portable_root(archive, destination, &error) != 0)
-        return failed(&error, out_error);
+        return oci_public_failed(&error, out_error);
     oci_document_t *document = OCI_DOCUMENT_OBJECT(
         {"archive", oci_document_string(archive)},
         {"destination", oci_document_string(destination)});
@@ -319,5 +330,5 @@ maelys_oci_result_t maelys_oci_unpack_portable_root(
         maelys_oci_set_error(out_error, "cannot build the unpack document");
         return MAELYS_OCI_ERR_MEMORY;
     }
-    return wrap(document, out_document);
+    return oci_public_wrap(document, out_document);
 }

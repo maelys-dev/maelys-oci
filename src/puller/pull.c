@@ -114,7 +114,7 @@ int oci_pull(const pull_options_t *options, oci_document_t **out_document, oci_e
     }
     if ((result = source_open(store, &source, error)) != 0) goto done;
     result = oci_import_locked(&source, &resolved.image, store, &store_lock,
-        &manifest_lock, http.deadline, out_document, error);
+        &manifest_lock, http.deadline, options->expected_root, out_document, error);
     if (!result && pull_receipt(options, &reference, &resolved.image, &http, *out_document) != 0) {
         pull_report(&http, OCI_ERROR_MEMORY, "cannot build the pull receipt");
         result = -1;

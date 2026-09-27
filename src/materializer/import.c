@@ -363,7 +363,8 @@ static int materialize(
     const oci_source_t *source, const oci_manifest_t *selected,
     const char *store,
     const char *platform_name, const char *final_path,
-    int *out_changed, uint64_t deadline, oci_error_t *error) {
+    int *out_changed, uint64_t deadline, const char *expected_root,
+    oci_error_t *error) {
     char objects[PATH_MAX];
     char manifest_directory[PATH_MAX];
     if (ensure_private_child(store, "objects", objects) != 0 ||
@@ -449,6 +450,21 @@ static int materialize(
             hash_staged(rootfs_tar_path, facts.rootfs_tar_digest, error) == 0
             ? 0 : -1;
     }
+    /* A caller that named the root it expects learns here, before anything
+     * is published, that this source does not produce it. The staging tree
+     * is removed with every other failure of this transaction. */
+    if (result == 0 && expected_root) {
+        char produced[OCI_DIGEST_SIZE];
+        stage = "compare the materialized root with the expected digest";
+        if (prefixed_digest(produced, facts.root_digest) != 0) {
+            result = -1;
+        } else if (strcmp(produced, expected_root) != 0) {
+            oci_error_report(error, OCI_ERROR_STATE,
+                "materialized root is %s, not the expected %s",
+                produced, expected_root);
+            result = -1;
+        }
+    }
     if (result == 0 && (result = import_checkpoint(deadline, error)) == 0) {
         stage = "write immutable artifact metadata";
         result = write_metadata(metadata, selected, &graph, &facts, error);
@@ -524,7 +540,8 @@ static int refuse_former_artifact(
 
 int oci_import_locked(const oci_source_t *source, oci_manifest_t *selected,
     const char *store, const maelys_oci_store_lock_t *store_lock,
-    const maelys_oci_store_lock_t *manifest_lock, uint64_t deadline, oci_document_t **out_document,
+    const maelys_oci_store_lock_t *manifest_lock, uint64_t deadline,
+    const char *expected_root, oci_document_t **out_document,
     oci_error_t *error) {
     *out_document = NULL;
     if (!store_lock || !store_lock->handle || !manifest_lock || !manifest_lock->handle)
@@ -543,7 +560,8 @@ int oci_import_locked(const oci_source_t *source, oci_manifest_t *selected,
             error) != 0)
         return -1;
     int changed = 0;
-    if (materialize(source, selected, store, directory, path, &changed, deadline, error) != 0)
+    if (materialize(source, selected, store, directory, path, &changed, deadline,
+                    expected_root, error) != 0)
         return -1;
     oci_import_request_t request = {.apply = 1};
     *out_document = import_document(&request, selected, platform, store, path, existed, changed);
@@ -622,7 +640,7 @@ int oci_import(
             return -1;
         }
         result = oci_import_locked(source, selected, store, &store_lock,
-            &manifest_lock, 0u, out_document, error);
+            &manifest_lock, 0u, request->expected_root, out_document, error);
         maelys_oci_store_unlock_manifest(&store_lock, &manifest_lock);
     }
     if (result == 0 && !request->apply) {

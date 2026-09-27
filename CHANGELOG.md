@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.7.0 - 2026-09-27
+
+- **ABI 5: `maelys_oci_resolve` turns a tag into the digest every other
+  operation requires.** `maelys-oci resolve REGISTRY/REPOSITORY:TAG` reads
+  one manifest and reports the SHA-256 **of the bytes received**, never the
+  registry's `Docker-Content-Digest` header, which is compared and refused
+  when it disagrees; an index also reports the platforms it offers and
+  whether this materializer supports each. It opens no store, fetches no
+  blob and writes nothing. `pull` and `import` still take a digest alone: a
+  tag names no content, and resolving one is a separate, visible step.
+- **`--expect-root sha256:HEX` on `pull` and `import`** refuses when the
+  materialized root differs, before anything is published, and the
+  diagnostic names both digests. What was a claim — the same source
+  produces the same root — a caller can now hold the tool to.
+  `maelys_oci_pull_options_set_expected_root` and
+  `maelys_oci_import_options_set_expected_root` carry it.
+- Both were proposed in an architecture review of the tool's standing as a
+  command of its own, and both are what that review called the friction of
+  using it outside maelys-warden.
+
 ## 0.6.7 - 2026-09-27
 
 - **A directory wider than one filesystem block now materializes.** The ext4

@@ -39,7 +39,7 @@ check "version matches the VERSION file" '[ "$code" = 0 ] && [ "$out" = "maelys-
 
 run describe "$oci" describe --summary --format json --compact --non-interactive
 check "describe summary is a silent envelope" '[ "$code" = 0 ] && [ -z "$err" ] && json_data "$work/out" "d[\"contract\"]" | grep -q "agent-cli/v2"'
-check "describe lists every product command" '[ "$(json_data "$work/out" "sorted(c[\"id\"] for c in data[\"commands\"] if c[\"id\"] not in (\"help\",\"version\",\"describe\",\"completion\",\"complete.candidates\"))")" = "['"'"'gc'"'"', '"'"'import'"'"', '"'"'inspect'"'"', '"'"'list'"'"', '"'"'pull'"'"', '"'"'remove'"'"', '"'"'unpack-rootfs'"'"', '"'"'verify'"'"']" ]'
+check "describe lists every product command" '[ "$(json_data "$work/out" "sorted(c[\"id\"] for c in data[\"commands\"] if c[\"id\"] not in (\"help\",\"version\",\"describe\",\"completion\",\"complete.candidates\"))")" = "['"'"'gc'"'"', '"'"'import'"'"', '"'"'inspect'"'"', '"'"'list'"'"', '"'"'pull'"'"', '"'"'remove'"'"', '"'"'resolve'"'"', '"'"'unpack-rootfs'"'"', '"'"'verify'"'"']" ]'
 
 run describe-import "$oci" describe import --json --compact
 check "import is a plan/apply transaction with a schema" 'json_data "$work/out" "data[\"commands\"][0][\"effect\"]" | grep -q "plan.*preview.*apply" && json_data "$work/out" "data[\"commands\"][0][\"outputSchema\"][\"required\"]" | grep -q "artifact"'
@@ -67,6 +67,18 @@ check "pull refuses a platform outside the choice" '[ "$code" = 1 ] && printf "%
 
 run conflict "$oci" pull registry.example/tool@sha256:0000000000000000000000000000000000000000000000000000000000000000 --token-file /a --docker-config /b --json --compact
 check "pull refuses --token-file with --docker-config" '[ "$code" = 1 ] && printf "%s" "$err" | grep -q "VALIDATION_FAILED"'
+
+run describe-resolve "$oci" describe resolve --json --compact
+check "resolve reads and takes a tag, never a store" 'json_data "$work/out" "data[\"commands\"][0][\"effect\"]" | grep -q "read" && json_data "$work/out" "data[\"commands\"][0][\"input\"][\"operands\"][0][\"summary\"]" | grep -q "TAG" && [ -z "$(json_data "$work/out" "[o[\"long\"] for o in data[\"commands\"][0][\"input\"][\"options\"] if o[\"long\"] == \"--store\"]" | tr -d "[]")" ]'
+
+run resolve-digest "$oci" resolve registry.example/tool@sha256:0000000000000000000000000000000000000000000000000000000000000000 --json --compact
+check "resolve refuses a digest reference" '[ "$code" = 1 ] && printf "%s" "$err" | grep -q "REGISTRY/REPOSITORY:TAG"'
+
+run resolve-tag "$oci" resolve registry.example/tool:-leading-hyphen --json --compact
+check "resolve refuses a tag outside the OCI grammar" '[ "$code" = 1 ] && printf "%s" "$err" | grep -q "REGISTRY/REPOSITORY:TAG"'
+
+run expect-root-malformed "$oci" pull registry.example/tool@sha256:0000000000000000000000000000000000000000000000000000000000000000 --expect-root sha256:zz --json --compact
+check "--expect-root is a typed digest" '[ "$code" = 1 ] && printf "%s" "$err" | grep -q "\"code\":\"VALIDATION_FAILED\""'
 
 run digest "$oci" import "$work" --digest nope --json --compact
 check "import refuses a malformed --digest before touching the source" '[ "$code" = 1 ] && printf "%s" "$err" | grep -q "\"code\":\"VALIDATION_FAILED\"" && printf "%s" "$err" | grep -q "sha256"'

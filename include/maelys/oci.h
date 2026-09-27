@@ -10,7 +10,7 @@
 extern "C" {
 #endif
 
-#define MAELYS_OCI_ABI_VERSION 4u
+#define MAELYS_OCI_ABI_VERSION 5u
 #define MAELYS_OCI_DIGEST_HEX_SIZE 65u
 
 /* Versioned standalone materialization: image contents have no injected
@@ -61,6 +61,9 @@ maelys_oci_result_t maelys_oci_pull_options_set_ca_file(maelys_oci_pull_options_
 maelys_oci_result_t maelys_oci_pull_options_set_token_file(maelys_oci_pull_options_t *options, const char *path);
 maelys_oci_result_t maelys_oci_pull_options_set_docker_config(maelys_oci_pull_options_t *options, const char *path);
 maelys_oci_result_t maelys_oci_pull_options_set_timeout_ms(maelys_oci_pull_options_t *options, uint64_t timeout_ms);
+/* The digest "sha256:HEX" the materialized root must equal. A root that
+ * differs fails the acquisition before anything is published. */
+maelys_oci_result_t maelys_oci_pull_options_set_expected_root(maelys_oci_pull_options_t *options, const char *digest);
 /* store is an absolute private path, created when absent. reference is
  * REGISTRY/REPOSITORY@sha256:HEX; platform is NULL, linux/arm64 or linux/amd64.
  * On failure *out_result is NULL. Optional out_error receives an owned
@@ -192,6 +195,15 @@ int maelys_oci_platform_valid(const char *platform);
  * records does not parse the text again.
  */
 typedef struct maelys_oci_document maelys_oci_document_t;
+
+/* Resolves REGISTRY/REPOSITORY:TAG into the digest of the manifest the
+ * registry serves, computed from the bytes received and never taken from
+ * a header, with the platforms an index offers. Reads only: no store is
+ * opened and no blob is fetched. The document is
+ * {schema, registry, repository, tag, reference, digest, mediaType,
+ * manifestBytes, platforms:[{platform, digest, mediaType, supported}]}. */
+maelys_oci_result_t maelys_oci_resolve(const maelys_oci_pull_options_t *options,
+    const char *reference, maelys_oci_document_t **out_document, char **out_error);
 /* Canonical JSON of the document, owned by the caller (maelys_oci_text_free);
  * NULL on allocation failure or for a NULL document. */
 char *maelys_oci_document_text(const maelys_oci_document_t *document);
@@ -225,6 +237,8 @@ maelys_oci_result_t maelys_oci_import_options_set_platform(
     maelys_oci_import_options_t *options, const char *platform);
 maelys_oci_result_t maelys_oci_import_options_set_digest(
     maelys_oci_import_options_t *options, const char *digest);
+/* The digest "sha256:HEX" the materialized root must equal. */
+maelys_oci_result_t maelys_oci_import_options_set_expected_root(maelys_oci_import_options_t *options, const char *digest);
 maelys_oci_result_t maelys_oci_import_options_set_apply(
     maelys_oci_import_options_t *options, int apply);
 maelys_oci_result_t maelys_oci_import(

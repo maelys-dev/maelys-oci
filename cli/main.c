@@ -133,6 +133,9 @@ static const maelys_cli_option_t import_options[] = {
     {MAELYS_CLI_DIGEST("digest", "sha256:HEX",
      "Select the manifest with this digest when the source has several.",
      digest_algorithms)},
+    {MAELYS_CLI_DIGEST("expect-root", "sha256:HEX",
+     "Refuse before publishing anything unless the materialized root carries "
+     "this digest.", digest_algorithms)},
     MAELYS_CLI_APPLY_OPTION,
 };
 
@@ -144,6 +147,7 @@ static int command_import(maelys_cli_context_t *context) {
         maelys_oci_import_options_set_store(options, store_option(context)) != MAELYS_OCI_OK ||
         maelys_oci_import_options_set_platform(options, maelys_cli_option(context, "platform")) != MAELYS_OCI_OK ||
         maelys_oci_import_options_set_digest(options, maelys_cli_option(context, "digest")) != MAELYS_OCI_OK ||
+        maelys_oci_import_options_set_expected_root(options, maelys_cli_option(context, "expect-root")) != MAELYS_OCI_OK ||
         maelys_oci_import_options_set_apply(options, maelys_cli_flag(context, "apply")) != MAELYS_OCI_OK) {
         maelys_oci_import_options_release(&options);
         return maelys_cli_fail(context, MAELYS_CLI_CODE_UNEXPECTED,
@@ -184,6 +188,9 @@ static const maelys_cli_option_t pull_options[] = {
     {MAELYS_CLI_UNSIGNED("timeout-ms", "N",
      "Global acquisition deadline in milliseconds.", 1u, MAELYS_OCI_PULL_TIMEOUT_MAX_MS),
      MAELYS_CLI_DEFAULT_OF(MAELYS_OCI_PULL_TIMEOUT_MS)},
+    {MAELYS_CLI_DIGEST("expect-root", "sha256:HEX",
+     "Refuse before publishing anything unless the materialized root carries "
+     "this digest.", digest_algorithms)},
 };
 
 static int command_pull(maelys_cli_context_t *context) {
@@ -204,6 +211,7 @@ static int command_pull(maelys_cli_context_t *context) {
         maelys_oci_pull_options_set_ca_file(options, maelys_cli_option(context, "ca-file")) != MAELYS_OCI_OK ||
         maelys_oci_pull_options_set_token_file(options, maelys_cli_option(context, "token-file")) != MAELYS_OCI_OK ||
         maelys_oci_pull_options_set_docker_config(options, maelys_cli_option(context, "docker-config")) != MAELYS_OCI_OK ||
+        maelys_oci_pull_options_set_expected_root(options, maelys_cli_option(context, "expect-root")) != MAELYS_OCI_OK ||
         maelys_oci_pull_options_set_timeout_ms(options, timeout_ms) != MAELYS_OCI_OK) {
         maelys_oci_pull_options_release(&options);
         return maelys_cli_fail(context, MAELYS_CLI_CODE_UNEXPECTED,
@@ -224,6 +232,50 @@ static int command_pull(maelys_cli_context_t *context) {
     }
     maelys_oci_pull_result_release(&result);
     return status;
+}
+
+/* ---- resolve -------------------------------------------------------------------------- */
+
+static const maelys_cli_operand_t resolve_operands[] = {
+    {MAELYS_CLI_OPERAND("REFERENCE",
+     "Mutable image reference REGISTRY/REPOSITORY:TAG.")},
+};
+
+static const maelys_cli_option_t resolve_options[] = {
+    {MAELYS_CLI_ABSOLUTE_PATH("ca-file", "FILE",
+     "CA bundle; defaults to SSL_CERT_FILE or the system bundle.")},
+    {MAELYS_CLI_ABSOLUTE_PATH("token-file", "FILE",
+     "Private file holding a registry bearer token."),
+     .conflicts_with = "docker-config"},
+    {MAELYS_CLI_ABSOLUTE_PATH("docker-config", "FILE",
+     "Private Docker config.json with static auths; credential helpers are "
+     "refused."), .conflicts_with = "token-file"},
+    {MAELYS_CLI_UNSIGNED("timeout-ms", "N",
+     "Global deadline in milliseconds.", 1u, MAELYS_OCI_PULL_TIMEOUT_MAX_MS),
+     MAELYS_CLI_DEFAULT_OF(MAELYS_OCI_PULL_TIMEOUT_MS)},
+};
+
+static int command_resolve(maelys_cli_context_t *context) {
+    maelys_oci_pull_options_t *options = NULL;
+    uint64_t timeout_ms = 0u;
+    (void)maelys_cli_option_unsigned(context, "timeout-ms", &timeout_ms);
+    if (maelys_oci_pull_options_create(&options) != MAELYS_OCI_OK ||
+        maelys_oci_pull_options_set_ca_file(options, maelys_cli_option(context, "ca-file")) != MAELYS_OCI_OK ||
+        maelys_oci_pull_options_set_token_file(options, maelys_cli_option(context, "token-file")) != MAELYS_OCI_OK ||
+        maelys_oci_pull_options_set_docker_config(options, maelys_cli_option(context, "docker-config")) != MAELYS_OCI_OK ||
+        maelys_oci_pull_options_set_timeout_ms(options, timeout_ms) != MAELYS_OCI_OK) {
+        maelys_oci_pull_options_release(&options);
+        return maelys_cli_fail(context, MAELYS_CLI_CODE_UNEXPECTED,
+            "Report this defect to the command implementation.",
+            "Cannot construct validated resolve options.");
+    }
+    maelys_oci_document_t *document = NULL;
+    char *error = NULL;
+    maelys_oci_result_t result = maelys_oci_resolve(options,
+        maelys_cli_operand(context, 0u), &document, &error);
+    maelys_oci_pull_options_release(&options);
+    if (result != MAELYS_OCI_OK) return fail_with(context, result, error);
+    return succeed_document(context, document, MAELYS_CLI_EXIT_OK);
 }
 
 /* ---- list, verify, gc ----------------------------------------------------------------- */
@@ -363,6 +415,10 @@ static const maelys_cli_command_t commands[] = {
      command_pull),
      MAELYS_CLI_OPERANDS(pull_operands), MAELYS_CLI_OPTIONS(pull_options),
      MAELYS_CLI_SCHEMA(oci_pull_schema)},
+    {MAELYS_CLI_READ("resolve", "resolve",
+     "Resolve a tag into the digest the registry serves.", command_resolve),
+     MAELYS_CLI_OPERANDS(resolve_operands), MAELYS_CLI_OPTIONS(resolve_options),
+     MAELYS_CLI_SCHEMA(oci_resolve_schema)},
     {MAELYS_CLI_RECORDS("list", "list",
      "List the artifacts published in the store.", command_list),
      MAELYS_CLI_OPTIONS(store_options), MAELYS_CLI_SCHEMA(oci_list_schema)},

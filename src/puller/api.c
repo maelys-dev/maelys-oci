@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: MPL-2.0 */
 #include "src/puller/internal.h"
+#include "src/materializer/internal.h"
 #include "src/puller/tls_version.h"
 #include <stdlib.h>
 #include <string.h>
@@ -8,6 +9,7 @@ struct maelys_oci_pull_options {
     char *ca_file;
     char *token_file;
     char *docker_config;
+    char *expected_root;
     uint64_t timeout_ms;
 };
 struct maelys_oci_pull_result {
@@ -26,6 +28,7 @@ void maelys_oci_pull_options_release(maelys_oci_pull_options_t **options) {
     free((*options)->ca_file);
     free((*options)->token_file);
     free((*options)->docker_config);
+    free((*options)->expected_root);
     free(*options);
     *options = NULL;
 }
@@ -49,12 +52,47 @@ maelys_oci_result_t maelys_oci_pull_options_set_docker_config(maelys_oci_pull_op
     return options && (!path || !options->token_file) ?
         set_path(&options->docker_config, path) : MAELYS_OCI_ERR_ARGUMENT;
 }
+/* The digest the materialized root must equal, "sha256:HEX". A pull whose
+ * root differs fails before publishing anything, so the caller learns that
+ * this source no longer produces the root it recorded. */
+maelys_oci_result_t maelys_oci_pull_options_set_expected_root(
+    maelys_oci_pull_options_t *options, const char *digest) {
+    if (!options || (digest && !oci_digest_valid(digest)))
+        return MAELYS_OCI_ERR_ARGUMENT;
+    char *copy = digest ? strdup(digest) : NULL;
+    if (digest && !copy) return MAELYS_OCI_ERR_MEMORY;
+    free(options->expected_root);
+    options->expected_root = copy;
+    return MAELYS_OCI_OK;
+}
 maelys_oci_result_t maelys_oci_pull_options_set_timeout_ms(maelys_oci_pull_options_t *options, uint64_t timeout_ms) {
     if (!options || !timeout_ms || timeout_ms > MAELYS_OCI_PULL_TIMEOUT_MAX_MS)
         return MAELYS_OCI_ERR_ARGUMENT;
     options->timeout_ms = timeout_ms;
     return MAELYS_OCI_OK;
 }
+/* Read-only: no store is opened and no blob is fetched. */
+maelys_oci_result_t maelys_oci_resolve(
+    const maelys_oci_pull_options_t *options, const char *reference,
+    maelys_oci_document_t **out_document, char **out_error) {
+    if (out_error) *out_error = NULL;
+    if (!out_document) return MAELYS_OCI_ERR_ARGUMENT;
+    *out_document = NULL;
+    if (!reference) return MAELYS_OCI_ERR_ARGUMENT;
+    pull_options_t request = {
+        .reference = reference,
+        .ca_file = options ? options->ca_file : NULL,
+        .token_file = options ? options->token_file : NULL,
+        .docker_config = options ? options->docker_config : NULL,
+        .timeout_ms = options ? options->timeout_ms : MAELYS_OCI_PULL_TIMEOUT_MS};
+    oci_error_t error = OCI_ERROR_INIT;
+    oci_document_t *document = NULL;
+    if (oci_resolve_tag(&request, &document, &error) != 0)
+        return oci_public_failed(&error, out_error);
+    oci_error_clear(&error);
+    return oci_public_wrap(document, out_document);
+}
+
 static maelys_oci_result_t public_error(oci_error_kind_t kind) {
     switch (kind) {
     case OCI_ERROR_ARGUMENT: return MAELYS_OCI_ERR_ARGUMENT;
@@ -88,7 +126,8 @@ maelys_oci_result_t maelys_oci_pull(const maelys_oci_pull_options_t *options,
         .timeout_ms = options ? options->timeout_ms : MAELYS_OCI_PULL_TIMEOUT_MS,
         .ca_file = options ? options->ca_file : NULL,
         .token_file = options ? options->token_file : NULL,
-        .docker_config = options ? options->docker_config : NULL};
+        .docker_config = options ? options->docker_config : NULL,
+        .expected_root = options ? options->expected_root : NULL};
     oci_error_t error = OCI_ERROR_INIT;
     if (oci_pull(&request, &result->document, &error) != 0) {
         maelys_oci_result_t status = public_error(error.kind);

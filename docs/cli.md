@@ -14,8 +14,9 @@ Common contract: `agent-cli/v2`. For the machine-readable detail run
 | completion | `completion SHELL` | read | json-envelope | Print the shell completion script generated from the catalog. |
 | complete.candidates | `__complete [WORDS...]` | read | json-records | Return completion candidates for a partial command line. |
 | inspect | `inspect SOURCE` | read | json-envelope | List the runnable manifests of an OCI layout directory or archive. |
-| import | `import SOURCE [--store DIRECTORY] [--platform OS/ARCH] [--digest sha256:HEX] [--apply]` | preview then apply with --apply | json-envelope | Materialize one manifest of an OCI layout into the immutable store. |
-| pull | `pull REFERENCE [--platform linux/arm64\|linux/amd64] [--store DIRECTORY] [--ca-file FILE] [--token-file FILE] [--docker-config FILE] [--timeout-ms N]` | execute | json-envelope | Acquire an image from a registry over HTTPS and materialize it. |
+| import | `import SOURCE [--store DIRECTORY] [--platform OS/ARCH] [--digest sha256:HEX] [--expect-root sha256:HEX] [--apply]` | preview then apply with --apply | json-envelope | Materialize one manifest of an OCI layout into the immutable store. |
+| pull | `pull REFERENCE [--platform linux/arm64\|linux/amd64] [--store DIRECTORY] [--ca-file FILE] [--token-file FILE] [--docker-config FILE] [--timeout-ms N] [--expect-root sha256:HEX]` | execute | json-envelope | Acquire an image from a registry over HTTPS and materialize it. |
+| resolve | `resolve REFERENCE [--ca-file FILE] [--token-file FILE] [--docker-config FILE] [--timeout-ms N]` | read | json-envelope | Resolve a tag into the digest the registry serves. |
 | list | `list [--store DIRECTORY]` | read | json-records | List the artifacts published in the store. |
 | verify | `verify [--store DIRECTORY]` | read | json-envelope | Verify every blob, closure, artifact and lease of the store; exit 2 on integrity errors. |
 | gc | `gc [--store DIRECTORY] [--grace-seconds SECONDS] [--apply]` | preview then apply with --apply | json-envelope | Collect unreachable blobs, stale leases and abandoned temporary state. |

@@ -452,6 +452,21 @@
                 "summary": "Select the manifest with this digest when the source has several."
               },
               {
+                "argument": {
+                  "algorithms": [
+                    "sha256"
+                  ],
+                  "name": "sha256:HEX",
+                  "type": "digest"
+                },
+                "conflictsWith": [],
+                "long": "--expect-root",
+                "repeatable": false,
+                "required": false,
+                "requires": [],
+                "summary": "Refuse before publishing anything unless the materialized root carries this digest."
+              },
+              {
                 "conflictsWith": [],
                 "long": "--apply",
                 "repeatable": false,
@@ -461,7 +476,7 @@
               }
             ],
             "passthrough": false,
-            "synopsis": "import SOURCE [--store DIRECTORY] [--platform OS/ARCH] [--digest sha256:HEX] [--apply]"
+            "synopsis": "import SOURCE [--store DIRECTORY] [--platform OS/ARCH] [--digest sha256:HEX] [--expect-root sha256:HEX] [--apply]"
           },
           "outputMode": "json-envelope",
           "outputSchema": {
@@ -530,7 +545,7 @@
             "import"
           ],
           "purpose": "Materialize one manifest of an OCI layout into the immutable store.",
-          "usage": "import SOURCE [--store DIRECTORY] [--platform OS/ARCH] [--digest sha256:HEX] [--apply]"
+          "usage": "import SOURCE [--store DIRECTORY] [--platform OS/ARCH] [--digest sha256:HEX] [--expect-root sha256:HEX] [--apply]"
         },
         {
           "available": true,
@@ -651,10 +666,25 @@
                 "required": false,
                 "requires": [],
                 "summary": "Global acquisition deadline in milliseconds."
+              },
+              {
+                "argument": {
+                  "algorithms": [
+                    "sha256"
+                  ],
+                  "name": "sha256:HEX",
+                  "type": "digest"
+                },
+                "conflictsWith": [],
+                "long": "--expect-root",
+                "repeatable": false,
+                "required": false,
+                "requires": [],
+                "summary": "Refuse before publishing anything unless the materialized root carries this digest."
               }
             ],
             "passthrough": false,
-            "synopsis": "pull REFERENCE [--platform linux/arm64|linux/amd64] [--store DIRECTORY] [--ca-file FILE] [--token-file FILE] [--docker-config FILE] [--timeout-ms N]"
+            "synopsis": "pull REFERENCE [--platform linux/arm64|linux/amd64] [--store DIRECTORY] [--ca-file FILE] [--token-file FILE] [--docker-config FILE] [--timeout-ms N] [--expect-root sha256:HEX]"
           },
           "outputMode": "json-envelope",
           "outputSchema": {
@@ -754,7 +784,194 @@
             "pull"
           ],
           "purpose": "Acquire an image from a registry over HTTPS and materialize it.",
-          "usage": "pull REFERENCE [--platform linux/arm64|linux/amd64] [--store DIRECTORY] [--ca-file FILE] [--token-file FILE] [--docker-config FILE] [--timeout-ms N]"
+          "usage": "pull REFERENCE [--platform linux/arm64|linux/amd64] [--store DIRECTORY] [--ca-file FILE] [--token-file FILE] [--docker-config FILE] [--timeout-ms N] [--expect-root sha256:HEX]"
+        },
+        {
+          "available": true,
+          "effect": "read",
+          "exitCodes": {
+            "0": "command completed",
+            "1": "execution failed",
+            "2": "valid report with violations"
+          },
+          "external": false,
+          "hidden": false,
+          "id": "resolve",
+          "input": {
+            "constraints": [
+              {
+                "kind": "at-most-one",
+                "options": [
+                  "--token-file",
+                  "--docker-config"
+                ]
+              },
+              {
+                "kind": "at-most-one",
+                "options": [
+                  "--docker-config",
+                  "--token-file"
+                ]
+              }
+            ],
+            "operands": [
+              {
+                "name": "REFERENCE",
+                "required": true,
+                "summary": "Mutable image reference REGISTRY/REPOSITORY:TAG.",
+                "variadic": false
+              }
+            ],
+            "options": [
+              {
+                "argument": {
+                  "name": "FILE",
+                  "type": "absolute-path"
+                },
+                "conflictsWith": [],
+                "long": "--ca-file",
+                "repeatable": false,
+                "required": false,
+                "requires": [],
+                "summary": "CA bundle; defaults to SSL_CERT_FILE or the system bundle."
+              },
+              {
+                "argument": {
+                  "name": "FILE",
+                  "type": "absolute-path"
+                },
+                "conflictsWith": [
+                  "--docker-config"
+                ],
+                "long": "--token-file",
+                "repeatable": false,
+                "required": false,
+                "requires": [],
+                "summary": "Private file holding a registry bearer token."
+              },
+              {
+                "argument": {
+                  "name": "FILE",
+                  "type": "absolute-path"
+                },
+                "conflictsWith": [
+                  "--token-file"
+                ],
+                "long": "--docker-config",
+                "repeatable": false,
+                "required": false,
+                "requires": [],
+                "summary": "Private Docker config.json with static auths; credential helpers are refused."
+              },
+              {
+                "argument": {
+                  "maximum": 86400000,
+                  "minimum": 1,
+                  "name": "N",
+                  "type": "unsigned"
+                },
+                "conflictsWith": [],
+                "default": "300000",
+                "long": "--timeout-ms",
+                "repeatable": false,
+                "required": false,
+                "requires": [],
+                "summary": "Global deadline in milliseconds."
+              }
+            ],
+            "passthrough": false,
+            "synopsis": "resolve REFERENCE [--ca-file FILE] [--token-file FILE] [--docker-config FILE] [--timeout-ms N]"
+          },
+          "outputMode": "json-envelope",
+          "outputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "digest": {
+                "description": "SHA-256 of the manifest bytes received, computed here and never taken from a header.",
+                "pattern": "^sha256:[0-9a-f]{64}$",
+                "type": "string"
+              },
+              "manifestBytes": {
+                "minimum": 1,
+                "type": "integer"
+              },
+              "mediaType": {
+                "description": "Media type the registry served.",
+                "type": "string"
+              },
+              "platforms": {
+                "description": "Platforms an index offers; empty for a single-platform manifest.",
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "digest": {
+                      "pattern": "^sha256:[0-9a-f]{64}$",
+                      "type": "string"
+                    },
+                    "mediaType": {
+                      "type": "string"
+                    },
+                    "platform": {
+                      "description": "OS/ARCH of this manifest.",
+                      "type": "string"
+                    },
+                    "supported": {
+                      "description": "Whether this materializer accepts that platform.",
+                      "type": "boolean"
+                    },
+                    "variant": {
+                      "description": "Architecture variant when the descriptor names one.",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "platform",
+                    "digest",
+                    "mediaType",
+                    "supported"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "reference": {
+                "description": "The REGISTRY/REPOSITORY:TAG reference given.",
+                "type": "string"
+              },
+              "registry": {
+                "description": "Registry authority the tag was read from.",
+                "type": "string"
+              },
+              "repository": {
+                "description": "Repository the tag belongs to.",
+                "type": "string"
+              },
+              "schema": {
+                "const": "maelys.oci-resolution/v1"
+              },
+              "tag": {
+                "description": "The mutable tag that was resolved.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "schema",
+              "registry",
+              "repository",
+              "tag",
+              "reference",
+              "digest",
+              "mediaType",
+              "manifestBytes",
+              "platforms"
+            ],
+            "type": "object"
+          },
+          "pattern": [
+            "resolve"
+          ],
+          "purpose": "Resolve a tag into the digest the registry serves.",
+          "usage": "resolve REFERENCE [--ca-file FILE] [--token-file FILE] [--docker-config FILE] [--timeout-ms N]"
         },
         {
           "available": true,
