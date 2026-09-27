@@ -138,6 +138,28 @@ def imported_artifact(process: subprocess.CompletedProcess) -> pathlib.Path:
 
 
 
+def dense_directory_case(base: pathlib.Path, count: int = 4096):
+    """A directory wider than one filesystem block must materialize.
+
+    libext2fs answers EXT2_ET_DIR_NO_SPACE when a directory's last block is
+    full; the writer adds a block and retries. Measured before the fix: every
+    directory holding more than about two hundred entries failed, which is
+    /bin of busybox and /usr/bin of every glibc base image — 27 of 36 public
+    images refused. The count here is far past one block and stays cheap.
+    """
+    entries = [("wide", "dir", b"")]
+    entries += [(f"wide/file-{index:05d}", "file", b"x") for index in range(count)]
+    entries += [(f"wide/link-{index:05d}", "symlink", "file-00000")
+                for index in range(16)]
+    source = base / "dense-layout"
+    layout(source, [tar_bytes(entries)])
+    artifact = imported_artifact(run_import(source, base / "dense-store"))
+    with tarfile.open(artifact / "rootfs.tar") as root:
+        wide = [name for name in root.getnames() if name.startswith("wide/")]
+    assert len(wide) == count + 16, (len(wide), count + 16)
+    assert (artifact / "root.ext4").is_file()
+
+
 def rejected_case(base: pathlib.Path, name: str, entries, pax=False):
     source = base / (name + "-layout")
     layout(source, [tar_bytes(entries, pax=pax)])
@@ -304,6 +326,8 @@ def main():
 
         no_external_decompressors(base)
 
+        dense_directory_case(base)
+
         rejected_case(base, "traversal", [("../escape", "file", b"x")])
         rejected_case(base, "absolute", [("/escape", "file", b"x")])
         rejected_case(base, "symlink-pivot", [
@@ -415,7 +439,7 @@ def main():
 
         lease_cases(base)
 
-    print("PASS adversarial OCI paths, media, expansion, metadata and atomic store gates")
+    print("PASS adversarial OCI paths, media, expansion, metadata, wide directories and atomic store gates")
 
 
 def no_external_decompressors(base):
