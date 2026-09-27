@@ -42,6 +42,13 @@
 
 /* Document schema identifiers published by the store operations. */
 #define OCI_SCHEMA_INSPECTION "maelys.warden.oci-inspection/v1"
+#define OCI_SCHEMA_RESOLUTION "maelys.oci-resolution/v1"
+
+/* The two shapes every public entry point shares: an owned document handed
+ * to the caller, and an internal error turned into a public result. */
+maelys_oci_result_t oci_public_wrap(
+    oci_document_t *root, maelys_oci_document_t **out_document);
+maelys_oci_result_t oci_public_failed(oci_error_t *error, char **out_error);
 #define OCI_SCHEMA_STORE "maelys.warden.oci-store/v1"
 #define OCI_SCHEMA_VERIFICATION "maelys.warden.oci-store-verification/v1"
 #define OCI_SCHEMA_ARTIFACT "maelys.oci-artifact/v7"
@@ -295,6 +302,7 @@ typedef struct oci_import_request {
     const char *store;              /* absolute private store root */
     const char *platform;           /* optional "OS/ARCH" selector */
     const char *digest;             /* optional "sha256:HEX" selector */
+    const char *expected_root;      /* optional "sha256:HEX" the root must equal */
     int apply;                      /* 0 plans, 1 materializes */
 } oci_import_request_t;
 
@@ -309,7 +317,8 @@ int oci_import(
  * the caller. Shared by the standalone import command and registry pull. */
 int oci_import_locked(const oci_source_t *source, oci_manifest_t *selected,
     const char *store, const maelys_oci_store_lock_t *store_lock,
-    const maelys_oci_store_lock_t *manifest_lock, uint64_t deadline, oci_document_t **out_document,
+    const maelys_oci_store_lock_t *manifest_lock, uint64_t deadline,
+    const char *expected_root, oci_document_t **out_document,
     oci_error_t *error);
 
 /* Lists published artifacts: {schema, store, artifacts: [...]}. A missing

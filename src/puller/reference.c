@@ -9,7 +9,7 @@ static int lower_alphanumeric(unsigned char byte) {
     return (byte >= 'a' && byte <= 'z') || (byte >= '0' && byte <= '9');
 }
 
-static int repository_valid(const char *repository) {
+int repository_valid(const char *repository) {
     size_t length = repository ? strlen(repository) : 0u;
     if (!length || length > 1024u || repository[0] == '/' ||
         repository[length - 1u] == '/') return 0;

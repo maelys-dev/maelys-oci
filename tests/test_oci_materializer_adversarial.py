@@ -160,6 +160,38 @@ def dense_directory_case(base: pathlib.Path, count: int = 4096):
     assert (artifact / "root.ext4").is_file()
 
 
+def expected_root_case(base: pathlib.Path):
+    """--expect-root turns "deterministic" into a promise a third party checks.
+
+    The matching digest publishes; a digest that differs refuses before the
+    artifact is published, so a caller that recorded a root learns that this
+    source no longer produces it.
+    """
+    source = base / "expect-layout"
+    layout(source, [tar_bytes([("data", "dir", b""), ("data/x", "file", b"x")])])
+    artifact = imported_artifact(run_import(source, base / "expect-store"))
+    produced = json.loads((artifact / "artifact.json").read_text())["rootDigest"]
+
+    store = base / "expect-match-store"
+    run_import(source, store, "--expect-root", produced)
+
+    refused = base / "expect-differs-store"
+    other = "sha256:" + "0" * 64
+    process = run_import(source, refused, "--expect-root", other, ok=False)
+    envelope = json.loads(process.stderr)
+    assert envelope["error"]["code"] == "PRECONDITION_FAILED", envelope
+    assert produced in envelope["error"]["message"], envelope
+    assert not list(refused.glob("objects/*/*/artifact.seal")), \
+        "a refused expectation published an artifact"
+
+    malformed = subprocess.run(
+        [str(HELPER), "import", str(source), "--store", str(base / "unused"),
+         "--expect-root", "sha256:zz", "--json", "--compact", "--non-interactive"],
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    assert malformed.returncode != 0
+    assert json.loads(malformed.stderr)["error"]["code"] == "VALIDATION_FAILED"
+
+
 def rejected_case(base: pathlib.Path, name: str, entries, pax=False):
     source = base / (name + "-layout")
     layout(source, [tar_bytes(entries, pax=pax)])
@@ -327,6 +359,7 @@ def main():
         no_external_decompressors(base)
 
         dense_directory_case(base)
+        expected_root_case(base)
 
         rejected_case(base, "traversal", [("../escape", "file", b"x")])
         rejected_case(base, "absolute", [("/escape", "file", b"x")])
@@ -439,7 +472,7 @@ def main():
 
         lease_cases(base)
 
-    print("PASS adversarial OCI paths, media, expansion, metadata, wide directories and atomic store gates")
+    print("PASS adversarial OCI paths, media, expansion, metadata, wide directories, expected roots and atomic store gates")
 
 
 def no_external_decompressors(base):

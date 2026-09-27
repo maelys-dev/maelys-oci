@@ -92,19 +92,34 @@ int fetch_memory(
     return 0;
 }
 
-int fetch_manifest_document(
-    pull_http_t *http, const pull_reference_t *reference,
-    const char *digest, unsigned char **out_bytes, size_t *out_size,
-    pull_headers_t *out_headers) {
-    static const char accept[] =
+static const char manifest_accept[] =
         "application/vnd.oci.image.index.v1+json, "
         "application/vnd.oci.image.manifest.v1+json, "
         "application/vnd.docker.distribution.manifest.list.v2+json, "
         "application/vnd.docker.distribution.manifest.v2+json";
+
+int fetch_manifest_document(
+    pull_http_t *http, const pull_reference_t *reference,
+    const char *digest, unsigned char **out_bytes, size_t *out_size,
+    pull_headers_t *out_headers) {
     char target[PULL_TARGET_MAX];
     if (oci_snprintf(target, sizeof(target), "/v2/%s/manifests/%s",
             reference->repository, digest) < 0)
         return -1;
-    return fetch_memory(http, reference, target, accept, digest,
+    return fetch_memory(http, reference, target, manifest_accept, digest,
+                        OCI_JSON_MAX, out_headers, out_bytes, out_size);
+}
+
+int fetch_manifest_tag(
+    pull_http_t *http, const pull_reference_t *reference,
+    const char *tag, unsigned char **out_bytes, size_t *out_size,
+    pull_headers_t *out_headers) {
+    char target[PULL_TARGET_MAX];
+    if (oci_snprintf(target, sizeof(target), "/v2/%s/manifests/%s",
+            reference->repository, tag) < 0)
+        return -1;
+    /* No expected digest: a tag names no content. The caller hashes what it
+     * received and compares that with the registry's claim. */
+    return fetch_memory(http, reference, target, manifest_accept, NULL,
                         OCI_JSON_MAX, out_headers, out_bytes, out_size);
 }

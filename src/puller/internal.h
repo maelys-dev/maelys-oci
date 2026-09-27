@@ -37,6 +37,7 @@
 #define PULL_CONNECTION_IDLE_TTL_MS UINT64_C(30000)
 #define PULL_SECRET_MAX 16384u
 #define PULL_TARGET_MAX 1400u
+#define PULL_TAG_SIZE 129u
 #define PULL_MESSAGE_MAX 4096u
 
 typedef struct pull_reference {
@@ -106,6 +107,7 @@ typedef struct pull_options {
     const char *ca_file;            /* optional absolute CA bundle */
     const char *token_file;         /* optional private bearer token file */
     const char *docker_config;      /* optional private Docker config */
+    const char *expected_root;      /* optional "sha256:HEX" the root must equal */
     uint64_t timeout_ms;
 } pull_options_t;
 
@@ -127,6 +129,17 @@ void pull_report(
     OCI_PRINTF(3, 4);
 
 int authority_valid(const char *authority);
+int repository_valid(const char *repository);
+/* REGISTRY/REPOSITORY:TAG; the digest field of out stays empty. */
+int reference_parse_tagged(const char *text, pull_reference_t *out,
+    char out_tag[PULL_TAG_SIZE]);
+/* Reads one manifest by tag, without believing the registry's digest header. */
+int fetch_manifest_tag(pull_http_t *http, const pull_reference_t *reference,
+    const char *tag, unsigned char **out_bytes, size_t *out_size,
+    pull_headers_t *out_headers);
+/* Resolves a tag into its digest and the platforms it offers. */
+int oci_resolve_tag(const pull_options_t *options,
+    oci_document_t **out_document, oci_error_t *error);
 void reference_clear(pull_reference_t *reference);
 int reference_parse(const char *text, pull_reference_t *out);
 void headers_clear(pull_headers_t *headers);

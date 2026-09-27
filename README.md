@@ -7,10 +7,12 @@ its terminal, built on [maelys-cli](../maelys-cli) and installable as the
 `maelys oci` external command.
 
 ```sh
+maelys-oci resolve registry.example/team/tool:1.4          # tag -> digest
 maelys-oci inspect /absolute/layout
 maelys-oci import /absolute/layout --platform linux/arm64            # plan
 maelys-oci import /absolute/layout --platform linux/arm64 --apply    # materialize
 maelys-oci pull registry.example/team/tool@sha256:... --platform linux/arm64
+maelys-oci pull registry.example/team/tool@sha256:... --expect-root sha256:...
 maelys-oci list --format jsonl
 maelys-oci verify --json                                             # exit 2 on integrity errors
 maelys-oci gc --grace-seconds 3600                                   # plan, then --apply
