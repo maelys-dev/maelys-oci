@@ -124,6 +124,16 @@ def make_fixture() -> tuple[dict[str, bytes], str, str, str, str]:
     })
     oversized_digest = digest(oversized)
     assets[oversized_digest] = oversized
+    # Tags a resolution reads: the index itself, a body of an unknown media
+    # type, and a manifest that does not parse. A tag names no content, so the
+    # key is the tag and the digest is whatever its bytes produce.
+    assets["1.0"] = index
+    assets["unknown-type"] = canonical({"greeting": "not a manifest"})
+    assets["broken"] = canonical({
+        "schemaVersion": 2,
+        "mediaType": "application/vnd.oci.image.manifest.v1+json",
+        "config": {"mediaType": "application/vnd.oci.image.config.v1+json"},
+    })
     return (assets, index_digest, arm_manifest_digest, oversized_digest,
             mismatched_index_digest)
 
@@ -248,6 +258,16 @@ class Handler(http.server.BaseHTTPRequestHandler):
                                digest_header=requested)
                     self.close_connection = True
                     return
+                if not requested.startswith("sha256:"):
+                    if repository == "lying/tool":
+                        # A registry may claim any digest; the resolution
+                        # believes the bytes it received, not this header.
+                        self.reply(200, data, media=media or "application/json",
+                                   digest_header=self.server.index_digest)
+                        return
+                    self.reply(200, data,
+                               media=media or "application/json")
+                    return
                 self.reply(200, data, media=media + "; charset=utf-8",
                            digest_header=requested)
                 return
@@ -332,6 +352,36 @@ def main() -> int:
             env = os.environ.copy()
             store = root / "store"
             store.mkdir(mode=0o700)
+            # resolve: a tag becomes the digest of the bytes received.
+            resolution = json.loads(run([
+                puller, "resolve", f"{authority}/example/tool:1.0",
+                "--ca-file", str(ca_cert), "--docker-config", str(docker_config),
+            ], env=env).stdout)["data"]
+            assert resolution["digest"] == index_digest, resolution
+            assert resolution["tag"] == "1.0", resolution
+            offered = {entry["platform"] for entry in resolution["platforms"]}
+            assert offered == {"linux/amd64", "linux/arm64"}, resolution
+            assert all(entry["supported"] for entry in resolution["platforms"]), resolution
+            assert not any("variant" in entry for entry in resolution["platforms"]), \
+                "a descriptor without a variant must still be reported"
+
+            # A digest claimed by the registry is never believed.
+            run([puller, "resolve", f"{authority}/lying/tool:broken",
+                 "--ca-file", str(ca_cert), "--docker-config", str(docker_config)],
+                env=env, expected=1)
+            # Neither an index nor an image manifest.
+            run([puller, "resolve", f"{authority}/example/tool:unknown-type",
+                 "--ca-file", str(ca_cert), "--docker-config", str(docker_config)],
+                env=env, expected=1)
+            # An image manifest that does not parse.
+            run([puller, "resolve", f"{authority}/example/tool:broken",
+                 "--ca-file", str(ca_cert), "--docker-config", str(docker_config)],
+                env=env, expected=1)
+
+            # The resolutions above opened their own connections; the pull
+            # scenario counts its own, so it starts from a clean record.
+            server.requests.clear()
+
             reference = f"{authority}/example/tool@{index_digest}"
             result = run([
                 puller, "pull", reference, "--platform", "linux/arm64",

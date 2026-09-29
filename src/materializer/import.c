@@ -422,16 +422,6 @@ static int materialize(
                 : -1;
     }
     if (result == 0 && (result = import_checkpoint(deadline, error)) == 0) {
-        stage = "publish the verified OCI source blobs without replacement";
-        result = publish_selected_blobs(
-            store, selected, descriptors, layer_paths);
-    }
-    if (result == 0 && (result = import_checkpoint(deadline, error)) == 0) {
-        stage = "publish the canonical OCI source closure before its artifact";
-        result = publish_source_closure(
-            store, selected, platform_name, import_root);
-    }
-    if (result == 0 && (result = import_checkpoint(deadline, error)) == 0) {
         stage = "compact and reindex the logical Linux graph";
         result = graph_compact(&graph);
     }
@@ -464,6 +454,16 @@ static int materialize(
                 produced, expected_root);
             result = -1;
         }
+    }
+    if (result == 0 && (result = import_checkpoint(deadline, error)) == 0) {
+        stage = "publish the verified OCI source blobs without replacement";
+        result = publish_selected_blobs(
+            store, selected, descriptors, layer_paths);
+    }
+    if (result == 0 && (result = import_checkpoint(deadline, error)) == 0) {
+        stage = "publish the canonical OCI source closure before its artifact";
+        result = publish_source_closure(
+            store, selected, platform_name, import_root);
     }
     if (result == 0 && (result = import_checkpoint(deadline, error)) == 0) {
         stage = "write immutable artifact metadata";
