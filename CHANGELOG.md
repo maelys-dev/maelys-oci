@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.7.1 - 2026-09-29
+
+- **`resolve` reported only the platforms that carry a variant.** A record
+  was built with a `variant` member whose value was absent for any platform
+  that declares none, which made the whole record null, and the loop skipped
+  it without a word: `library/alpine:3.21` offered three entries where the
+  index holds eight, `linux/amd64` among the five lost. The member is now
+  added only when the index declares it, and a record that cannot be built
+  fails the command instead of shrinking its answer.
+- **`--expect-root` refused after publishing.** The blobs of the source and
+  its closure were published before the produced root was compared to the
+  one expected, so a refusal left them in the store. Both publications now
+  follow the comparison: a refused import writes nothing.
+- **A manifest of an unexpected type was accepted.** `resolve` asked for an
+  index or an image manifest and trusted the answer when the body declared
+  no `mediaType` of its own; a registry answering anything else — an empty
+  object, a body of another kind — was read as a single-platform manifest.
+  The media type is now required to be one of the two, and a single
+  manifest is parsed before being reported.
+
 ## 0.7.0 - 2026-09-27
 
 - **ABI 5: `maelys_oci_resolve` turns a tag into the digest every other
