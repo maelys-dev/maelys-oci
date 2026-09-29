@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Adopt maelys-release v0.62.2 (from v0.62.1). Its remote writes in `cut`,
+  `tap` and `migrate` are now read back before being reported as published.
+  The generated CI and release workflows use the new pinned commit; the
+  product CLI, dependency pins and on-disk formats are unchanged.
+
 ## 0.8.0 - 2026-09-29
 
 - **ABI 6: `stat SOURCE` reports the metadata of each runnable image.**
