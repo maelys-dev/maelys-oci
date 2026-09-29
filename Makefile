@@ -209,7 +209,7 @@ STORE_SOURCES := src/store/core.c src/store/seal.c src/store/artifact.c \
 	src/store/blobs.c src/store/acquisition.c
 MATERIALIZER_SOURCES := src/materializer/source.c src/materializer/graph.c \
 	src/materializer/layer.c src/materializer/ext4.c \
-	src/materializer/inspection.c src/materializer/migration.c \
+	src/materializer/inspection.c src/materializer/stat.c src/materializer/migration.c \
 	src/materializer/verification.c src/materializer/leases.c \
 	src/materializer/gc.c src/materializer/import.c src/materializer/closure.c \
 	src/materializer/api.c
@@ -471,6 +471,7 @@ check: all cli-check socle-check public-check parser-check source-check \
 		build-layout-check security-check reproducible-check writers-check $(LEASE_TEST)
 	tests/test_oci_materializer.sh $(abspath $(OCI_BIN)) $(abspath $(LEASE_TEST))
 	$(PYTHON) tests/test_oci_materializer_adversarial.py $(abspath $(OCI_BIN))
+	$(PYTHON) tests/test_oci_inspection.py $(abspath $(OCI_BIN))
 	$(PYTHON) tests/test_oci_integrity.py $(abspath $(OCI_BIN))
 	$(PYTHON) tests/test_oci_registry_pull.py $(abspath $(OCI_BIN)) $(abspath $(OCI_BIN))
 	$(PYTHON) tests/test_oci_pull_recovery.py $(abspath $(OCI_BIN)) $(abspath $(PUBLIC_TEST))

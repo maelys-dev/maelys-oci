@@ -10,7 +10,7 @@
 extern "C" {
 #endif
 
-#define MAELYS_OCI_ABI_VERSION 5u
+#define MAELYS_OCI_ABI_VERSION 6u
 #define MAELYS_OCI_DIGEST_HEX_SIZE 65u
 
 /* Versioned standalone materialization: image contents have no injected
@@ -218,8 +218,18 @@ void maelys_oci_document_release(maelys_oci_document_t **document);
 void maelys_oci_text_free(char *text);
 
 /* Reads oci-layout and index.json of a layout directory or tar archive and
- * lists every runnable manifest. */
+ * lists every distinct runnable manifest, including through nested indexes.
+ * Traversal is bounded to eight nested indexes and 1024 descriptors. */
 maelys_oci_result_t maelys_oci_inspect(
+    const char *source, maelys_oci_document_t **out_document, char **out_error);
+
+/* The same read-only traversal with declared image configuration, manifest
+ * annotations, per-layer descriptors and DiffIDs, and construction history.
+ * Optional null metadata is omitted, unknown fields are ignored and no
+ * runtime defaults are inferred. Layer contents are not verified or
+ * materialized and the private store is not opened. Metadata is bounded to
+ * 8 MiB in aggregate and the document's JSON byte/token ceilings. */
+maelys_oci_result_t maelys_oci_stat(
     const char *source, maelys_oci_document_t **out_document, char **out_error);
 
 /* Import: plan by default, materialize with apply. Options own copied

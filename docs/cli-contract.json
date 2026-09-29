@@ -389,6 +389,252 @@
         },
         {
           "available": true,
+          "effect": "read",
+          "exitCodes": {
+            "0": "command completed",
+            "1": "execution failed",
+            "2": "valid report with violations"
+          },
+          "external": false,
+          "hidden": false,
+          "id": "stat",
+          "input": {
+            "constraints": [],
+            "operands": [
+              {
+                "name": "SOURCE",
+                "required": true,
+                "summary": "OCI layout directory or tar archive with oci-layout and index.json.",
+                "variadic": false
+              }
+            ],
+            "options": [],
+            "passthrough": false,
+            "synopsis": "stat SOURCE"
+          },
+          "outputMode": "json-envelope",
+          "outputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "manifests": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "annotations": {
+                      "additionalProperties": {
+                        "type": "string"
+                      },
+                      "type": "object"
+                    },
+                    "author": {
+                      "type": "string"
+                    },
+                    "compressedLayerBytes": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "config": {
+                      "additionalProperties": false,
+                      "description": "Declared execution parameters; absent or null optional fields are omitted and no runtime defaults are inferred.",
+                      "properties": {
+                        "ArgsEscaped": {
+                          "type": "boolean"
+                        },
+                        "Cmd": {
+                          "items": {
+                            "type": "string"
+                          },
+                          "type": "array"
+                        },
+                        "Entrypoint": {
+                          "items": {
+                            "type": "string"
+                          },
+                          "type": "array"
+                        },
+                        "Env": {
+                          "items": {
+                            "type": "string"
+                          },
+                          "type": "array"
+                        },
+                        "ExposedPorts": {
+                          "additionalProperties": {
+                            "additionalProperties": false,
+                            "type": "object"
+                          },
+                          "type": "object"
+                        },
+                        "Labels": {
+                          "additionalProperties": {
+                            "type": "string"
+                          },
+                          "type": "object"
+                        },
+                        "StopSignal": {
+                          "type": "string"
+                        },
+                        "User": {
+                          "type": "string"
+                        },
+                        "Volumes": {
+                          "additionalProperties": {
+                            "additionalProperties": false,
+                            "type": "object"
+                          },
+                          "type": "object"
+                        },
+                        "WorkingDir": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "configBytes": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "configDigest": {
+                      "pattern": "^sha256:[0-9a-f]{64}$",
+                      "type": "string"
+                    },
+                    "created": {
+                      "type": "string"
+                    },
+                    "digest": {
+                      "pattern": "^sha256:[0-9a-f]{64}$",
+                      "type": "string"
+                    },
+                    "history": {
+                      "description": "Declared history in order. Entries with emptyLayer true have no layer fields; nonempty entries are associated with successive layers.",
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "author": {
+                            "type": "string"
+                          },
+                          "comment": {
+                            "type": "string"
+                          },
+                          "created": {
+                            "type": "string"
+                          },
+                          "createdBy": {
+                            "type": "string"
+                          },
+                          "diffId": {
+                            "pattern": "^sha256:[0-9a-f]{64}$",
+                            "type": "string"
+                          },
+                          "emptyLayer": {
+                            "type": "boolean"
+                          },
+                          "layerDigest": {
+                            "pattern": "^sha256:[0-9a-f]{64}$",
+                            "type": "string"
+                          },
+                          "layerIndex": {
+                            "minimum": 0,
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "emptyLayer"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "layerCount": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "layers": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "diffId": {
+                            "description": "Declared SHA-256 of the uncompressed layer; stat does not verify layer contents.",
+                            "pattern": "^sha256:[0-9a-f]{64}$",
+                            "type": "string"
+                          },
+                          "digest": {
+                            "pattern": "^sha256:[0-9a-f]{64}$",
+                            "type": "string"
+                          },
+                          "mediaType": {
+                            "type": "string"
+                          },
+                          "size": {
+                            "minimum": 0,
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "digest",
+                          "mediaType",
+                          "size",
+                          "diffId"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "manifestBytes": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "mediaType": {
+                      "type": "string"
+                    },
+                    "platform": {
+                      "type": "string"
+                    },
+                    "variant": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "digest",
+                    "platform",
+                    "configDigest",
+                    "compressedLayerBytes",
+                    "layerCount",
+                    "mediaType",
+                    "manifestBytes",
+                    "configBytes",
+                    "annotations",
+                    "config",
+                    "layers",
+                    "history"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "schema": {
+                "const": "maelys.oci-stat/v1"
+              },
+              "source": {
+                "description": "Canonical path of the inspected OCI layout directory or archive.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "schema",
+              "source",
+              "manifests"
+            ],
+            "type": "object"
+          },
+          "pattern": [
+            "stat"
+          ],
+          "purpose": "Describe the configuration, layers and history of runnable OCI images.",
+          "usage": "stat SOURCE"
+        },
+        {
+          "available": true,
           "effect": {
             "apply": "apply",
             "plan": "preview"

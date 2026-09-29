@@ -120,6 +120,15 @@ static int command_inspect(maelys_cli_context_t *context) {
     return succeed_document(context, document, MAELYS_CLI_EXIT_OK);
 }
 
+static int command_stat(maelys_cli_context_t *context) {
+    maelys_oci_document_t *document = NULL;
+    char *error = NULL;
+    maelys_oci_result_t result =
+        maelys_oci_stat(maelys_cli_operand(context, 0u), &document, &error);
+    if (result != MAELYS_OCI_OK) return fail_with(context, result, error);
+    return succeed_document(context, document, MAELYS_CLI_EXIT_OK);
+}
+
 /* ---- import ---------------------------------------------------------------------------- */
 
 #define STORE_SUMMARY \
@@ -405,6 +414,10 @@ static const maelys_cli_command_t commands[] = {
      "List the runnable manifests of an OCI layout directory or archive.",
      command_inspect),
      MAELYS_CLI_OPERANDS(source_operands), MAELYS_CLI_SCHEMA(oci_inspect_schema)},
+    {MAELYS_CLI_READ("stat", "stat",
+     "Describe the configuration, layers and history of runnable OCI images.",
+     command_stat),
+     MAELYS_CLI_OPERANDS(source_operands), MAELYS_CLI_SCHEMA(oci_stat_schema)},
     {MAELYS_CLI_TRANSACTION("import", "import",
      "Materialize one manifest of an OCI layout into the immutable store.",
      command_import),

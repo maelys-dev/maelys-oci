@@ -122,9 +122,9 @@ int maelys_oci_platform_valid(const char *platform) {
 
 /* ---- inspect and import ----------------------------------------------------------------- */
 
-maelys_oci_result_t maelys_oci_inspect(
+static maelys_oci_result_t inspect_source(
     const char *source_path, maelys_oci_document_t **out_document,
-    char **out_error) {
+    char **out_error, int detailed) {
     maelys_oci_result_t started =
         begin(NULL, NULL, 0u, out_document, out_error);
     if (started != MAELYS_OCI_OK) return started;
@@ -137,7 +137,8 @@ maelys_oci_result_t maelys_oci_inspect(
     size_t count = 0u;
     oci_document_t *document = NULL;
     if (oci_inspect(&source, &items, &count, &error) == 0)
-        document = oci_inspection_document(source.path, items, count);
+        document = detailed ? oci_stat_document(&source, items, count, &error) :
+            oci_inspection_document(source.path, items, count);
     for (size_t i = 0u; i < count; ++i) oci_manifest_clear(&items[i]);
     free(items);
     source_close(&source);
@@ -150,6 +151,18 @@ maelys_oci_result_t maelys_oci_inspect(
         return MAELYS_OCI_ERR_MEMORY;
     }
     return oci_public_wrap(document, out_document);
+}
+
+maelys_oci_result_t maelys_oci_inspect(
+    const char *source_path, maelys_oci_document_t **out_document,
+    char **out_error) {
+    return inspect_source(source_path, out_document, out_error, 0);
+}
+
+maelys_oci_result_t maelys_oci_stat(
+    const char *source_path, maelys_oci_document_t **out_document,
+    char **out_error) {
+    return inspect_source(source_path, out_document, out_error, 1);
 }
 
 maelys_oci_result_t maelys_oci_import_options_create(

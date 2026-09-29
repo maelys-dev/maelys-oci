@@ -147,93 +147,172 @@ static int descriptor_is_unsupported_sibling(
             descriptor->architecture, descriptor->variant);
 }
 
+typedef struct inspection_walk {
+    const oci_source_t *source;
+    oci_manifest_t *items;
+    size_t count;
+    size_t descriptors;
+    char ancestors[OCI_INDEX_DEPTH_MAX][OCI_DIGEST_SIZE];
+    oci_error_t *error;
+} inspection_walk_t;
+
+/* A platform on an index descriptor constrains its entire subtree. Keep
+ * that constraint when a child omits its platform; never select a config
+ * of another architecture through an apparently compatible index. */
+static int inherit_platform(oci_descriptor_t *child,
+    const oci_descriptor_t *parent, oci_error_t *error) {
+    if (!parent || !parent->os[0]) return 0;
+    if (child->os[0] && (strcmp(child->os, parent->os) != 0 ||
+            strcmp(child->architecture, parent->architecture) != 0)) {
+        oci_error_report(error, OCI_ERROR_PROTOCOL,
+            "descriptor %s disagrees with its parent index platform",
+            child->digest);
+        return -1;
+    }
+    if (!child->os[0]) {
+        memcpy(child->os, parent->os, sizeof(child->os));
+        memcpy(child->architecture, parent->architecture,
+            sizeof(child->architecture));
+        memcpy(child->variant, parent->variant, sizeof(child->variant));
+    }
+    return 0;
+}
+
+static int inspect_index(inspection_walk_t *walk,
+    const unsigned char *bytes, size_t size,
+    const oci_descriptor_t *parent, size_t depth) {
+    maelys_json_document_t *index = oci_json_parse_object(
+        bytes, size, OCI_JSON_TOKENS_MAX);
+    maelys_json_value_t root = maelys_json_document_root(index);
+    maelys_json_value_t manifests;
+    char media_type[OCI_MEDIA_TYPE_SIZE] = {0};
+    size_t count = 0u;
+    int result = -1;
+    if (!index || !oci_json_u64_is(index, root, "schemaVersion", 2u) ||
+        oci_json_copy_string(index, root, "mediaType", media_type,
+            sizeof(media_type), 0) != 0 ||
+        (media_type[0] && (!oci_index_media_type_supported(media_type) ||
+            (parent && strcmp(media_type, parent->media_type) != 0))) ||
+        maelys_json_object_get(index, root, "manifests", &manifests) !=
+            MAELYS_JSON_OK ||
+        maelys_json_array_size(index, manifests, &count) != MAELYS_JSON_OK ||
+        count == 0u || count > OCI_MANIFEST_MAX - walk->descriptors) {
+        oci_error_report(walk->error, OCI_ERROR_PROTOCOL,
+            "OCI index must be schema 2 with supported media type and 1 to %u "
+            "descriptors in the complete traversal", OCI_MANIFEST_MAX);
+        goto done;
+    }
+    walk->descriptors += count;
+    result = 0;
+    for (size_t i = 0u; result == 0 && i < count; ++i) {
+        oci_descriptor_t descriptor;
+        maelys_json_value_t value;
+        if (maelys_json_array_get(index, manifests, i, &value) !=
+                MAELYS_JSON_OK ||
+            oci_descriptor_parse(index, value, 0, &descriptor) != 0) {
+            oci_error_report(walk->error, OCI_ERROR_PROTOCOL,
+                "OCI index entry %zu is not a valid descriptor", i);
+            result = -1;
+            break;
+        }
+        if (oci_descriptor_is_buildx_attestation(&descriptor) ||
+            descriptor_is_unsupported_sibling(&descriptor)) continue;
+        if (inherit_platform(&descriptor, parent, walk->error) != 0) {
+            result = -1;
+            break;
+        }
+        if (oci_index_media_type_supported(descriptor.media_type)) {
+            if (depth == OCI_INDEX_DEPTH_MAX) {
+                oci_error_report(walk->error, OCI_ERROR_PROTOCOL,
+                    "OCI index depth exceeds %u nested indexes",
+                    OCI_INDEX_DEPTH_MAX);
+                result = -1;
+                break;
+            }
+            for (size_t j = 0u; j < depth; ++j) {
+                if (strcmp(walk->ancestors[j], descriptor.digest) == 0) {
+                    oci_error_report(walk->error, OCI_ERROR_PROTOCOL,
+                        "cyclic OCI index graph at %s", descriptor.digest);
+                    result = -1;
+                    break;
+                }
+            }
+            if (result != 0) break;
+            unsigned char *child_bytes = NULL;
+            size_t child_size = 0u;
+            if (source_read_descriptor(walk->source, &descriptor, OCI_JSON_MAX,
+                    &child_bytes, &child_size) != 0) {
+                oci_error_report(walk->error, OCI_ERROR_PROTOCOL,
+                    "index %s is absent, oversized or does not match its digest",
+                    descriptor.digest);
+                result = -1;
+                break;
+            }
+            memcpy(walk->ancestors[depth], descriptor.digest, OCI_DIGEST_SIZE);
+            result = inspect_index(walk, child_bytes, child_size,
+                &descriptor, depth + 1u);
+            free(child_bytes);
+        } else {
+            oci_manifest_t item;
+            oci_error_t sibling = OCI_ERROR_INIT;
+            int inspected = oci_inspect_manifest(walk->source, &descriptor,
+                &item, &sibling);
+            if (inspected == OCI_CONFIG_OK) {
+                size_t duplicate = 0u;
+                while (duplicate < walk->count &&
+                    strcmp(walk->items[duplicate].manifest.digest,
+                        item.manifest.digest) != 0) ++duplicate;
+                if (duplicate == walk->count)
+                    walk->items[walk->count++] = item;
+                else
+                    oci_manifest_clear(&item);
+            } else if (inspected != OCI_CONFIG_UNSUPPORTED) {
+                oci_error_report(walk->error, sibling.kind, "%s",
+                    sibling.message ? sibling.message : "invalid image manifest");
+                result = -1;
+            }
+            oci_error_clear(&sibling);
+        }
+    }
+done:
+    maelys_json_document_release(index);
+    return result;
+}
+
 int oci_inspect(
     const oci_source_t *source, oci_manifest_t **out_items,
     size_t *out_count, oci_error_t *error) {
     *out_items = NULL;
     *out_count = 0u;
     if (read_layout_marker(source, error) != 0) return -1;
-    unsigned char *index_bytes = NULL;
-    size_t index_size = 0u;
-    if (source_read(source, "index.json", OCI_JSON_MAX,
-            &index_bytes, &index_size) != 0) {
+    unsigned char *bytes = NULL;
+    size_t size = 0u;
+    if (source_read(source, "index.json", OCI_JSON_MAX, &bytes, &size) != 0) {
         oci_error_report(error, OCI_ERROR_PROTOCOL,
             "source lacks a readable index.json");
         return -1;
     }
-    maelys_json_document_t *index = oci_json_parse_object(
-        index_bytes, index_size, OCI_JSON_TOKENS_MAX);
-    free(index_bytes);
-    maelys_json_value_t index_root = maelys_json_document_root(index);
-    maelys_json_value_t manifests;
-    size_t count;
-    if (!index || !oci_json_u64_is(index, index_root, "schemaVersion", 2u) ||
-        maelys_json_object_get(index, index_root, "manifests", &manifests) !=
-            MAELYS_JSON_OK ||
-        maelys_json_array_size(index, manifests, &count) != MAELYS_JSON_OK ||
-        count == 0u || count > OCI_MANIFEST_MAX) {
-        maelys_json_document_release(index);
-        oci_error_report(error, OCI_ERROR_PROTOCOL,
-            "index.json must be a schema 2 index with 1 to %u manifests",
-            OCI_MANIFEST_MAX);
-        return -1;
-    }
-    oci_manifest_t *items = calloc(count, sizeof(*items));
-    if (!items) {
-        maelys_json_document_release(index);
+    inspection_walk_t walk = {.source = source, .error = error};
+    walk.items = calloc(OCI_MANIFEST_MAX, sizeof(*walk.items));
+    int result = -1;
+    if (!walk.items)
         oci_error_report(error, OCI_ERROR_MEMORY, "out of memory");
-        return -1;
-    }
-    size_t runnable_count = 0u;
-    int result = 0;
-    for (size_t i = 0u; result == 0 && i < count; ++i) {
-        oci_descriptor_t descriptor;
-        maelys_json_value_t descriptor_value;
-        if (maelys_json_array_get(index, manifests, i, &descriptor_value) !=
-                MAELYS_JSON_OK ||
-            oci_descriptor_parse(index, descriptor_value, 0, &descriptor) != 0) {
-            oci_error_report(error, OCI_ERROR_PROTOCOL,
-                "index.json manifest %zu is not a valid descriptor", i);
-            result = -1;
-        } else if (oci_descriptor_is_buildx_attestation(&descriptor)) {
-            continue;
-        } else {
-            /* An OCI index may mix Linux images with platforms this product
-             * does not materialize. They are valid non-runnable siblings, not
-             * a reason to reject an explicitly selected Linux image. */
-            if (descriptor_is_unsupported_sibling(&descriptor))
-                continue;
-            /* The sibling reports into its own error: an unsupported one is
-             * skipped without discarding what the caller already accumulated. */
-            oci_error_t sibling = OCI_ERROR_INIT;
-            int inspected = oci_inspect_manifest(source, &descriptor,
-                &items[runnable_count], &sibling);
-            if (inspected != OCI_CONFIG_UNSUPPORTED) {
-                if (inspected != OCI_CONFIG_OK) {
-                    if (sibling.message)
-                        oci_error_report(error, sibling.kind, "%s",
-                            sibling.message);
-                    result = -1;
-                } else {
-                    ++runnable_count;
-                }
-            }
-            oci_error_clear(&sibling);
-        }
-    }
-    maelys_json_document_release(index);
-    if (result == 0 && runnable_count == 0u) {
+    else
+        result = inspect_index(&walk, bytes, size, NULL, 0u);
+    free(bytes);
+    if (result == 0 && walk.count == 0u) {
         oci_error_report(error, OCI_ERROR_PROTOCOL,
             "index.json declares no runnable manifest");
         result = -1;
     }
     if (result != 0) {
-        for (size_t j = 0u; j < runnable_count; ++j) oci_manifest_clear(&items[j]);
-        free(items);
+        for (size_t i = 0u; i < walk.count; ++i)
+            oci_manifest_clear(&walk.items[i]);
+        free(walk.items);
         return -1;
     }
-    *out_items = items;
-    *out_count = runnable_count;
+    *out_items = walk.items;
+    *out_count = walk.count;
     return 0;
 }
 

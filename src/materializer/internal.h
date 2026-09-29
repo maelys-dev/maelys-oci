@@ -24,6 +24,7 @@
 #include <sys/types.h>
 
 #define OCI_MANIFEST_MAX 1024u
+#define OCI_INDEX_DEPTH_MAX 8u
 #define OCI_LAYER_MAX 256u
 #define OCI_MAX_ENTRIES 200000u
 #define OCI_MAX_INODES 200000u
@@ -42,6 +43,7 @@
 
 /* Document schema identifiers published by the store operations. */
 #define OCI_SCHEMA_INSPECTION "maelys.warden.oci-inspection/v1"
+#define OCI_SCHEMA_STAT "maelys.oci-stat/v1"
 #define OCI_SCHEMA_RESOLUTION "maelys.oci-resolution/v1"
 
 /* The two shapes every public entry point shares: an owned document handed
@@ -297,6 +299,8 @@ int oci_inspect_manifest(const oci_source_t *source,
     const oci_descriptor_t *descriptor, oci_manifest_t *out, oci_error_t *error);
 oci_document_t *oci_inspection_document(
     const char *source_path, const oci_manifest_t *items, size_t count);
+oci_document_t *oci_stat_document(const oci_source_t *source,
+    const oci_manifest_t *items, size_t count, oci_error_t *error);
 
 typedef struct oci_import_request {
     const char *store;              /* absolute private store root */
