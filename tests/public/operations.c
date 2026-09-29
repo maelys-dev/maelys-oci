@@ -11,6 +11,18 @@
 #include <stdlib.h>
 #include <string.h>
 
+static void stat_errors(const char *scratch) {
+    maelys_oci_document_t *document = NULL;
+    char *error = NULL;
+    assert(maelys_oci_stat(NULL, &document, &error) == MAELYS_OCI_ERR_ARGUMENT);
+    assert(!document && !error);
+    assert(maelys_oci_stat(scratch, NULL, &error) == MAELYS_OCI_ERR_ARGUMENT);
+    assert(!error);
+    assert(maelys_oci_stat(scratch, &document, &error) != MAELYS_OCI_OK);
+    assert(!document && error);
+    maelys_oci_error_free(error);
+}
+
 static void absent_store_lists_nothing(const char *scratch) {
     char store[4096];
     assert(snprintf(store, sizeof(store), "%s/absent-store", scratch) > 0);
@@ -74,6 +86,7 @@ int main(int argc, char **argv) {
     maelys_oci_import_options_release(&options);
     assert(!options);
 
+    stat_errors(argv[1]);
     absent_store_lists_nothing(argv[1]);
 
     assert(maelys_oci_unpack_portable_root("/nonexistent/rootfs.tar", argv[1],

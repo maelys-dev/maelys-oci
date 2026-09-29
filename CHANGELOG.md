@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.8.0 - 2026-09-29
+
+- **ABI 6: `stat SOURCE` reports the metadata of each runnable image.**
+  `maelys_oci_stat` exposes the declared execution parameters, labels,
+  manifest annotations, creation metadata, ordered layer descriptors and
+  DiffIDs, and construction history. Empty history records do not consume a
+  layer. Optional null fields are omitted and unknown extensions are ignored;
+  malformed known metadata fails with a protocol diagnostic. The command
+  interprets index, manifest and config metadata, opens no store and infers
+  no runtime policy. Metadata is bounded to 8 MiB in aggregate and the
+  report's JSON byte/token ceilings. Layer contents are not verified or
+  materialized. `inspect` retains its compact v1 document.
+- **Local layouts may contain nested indexes.** `inspect`, `stat` and
+  `import` traverse both directories and archives to their runnable image
+  manifests, verifying each nested index against its descriptor. A platform
+  on an ancestor index constrains its descendants; repeated references to
+  one manifest do not make selection ambiguous. Traversal is bounded to
+  eight nested indexes and 1024 descriptor occurrences. Import selectors
+  still name a leaf manifest digest or its platform. Store formats and the
+  materializer's filesystem policy are unchanged.
+
 ## 0.7.1 - 2026-09-29
 
 - **`resolve` reported only the platforms that carry a variant.** A record

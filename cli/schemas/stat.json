@@ -1,0 +1,81 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "source", "manifests"],
+  "properties": {
+    "schema": {"const": "maelys.oci-stat/v1"},
+    "source": {"type": "string", "description": "Canonical path of the inspected OCI layout directory or archive."},
+    "manifests": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["digest", "platform", "configDigest", "compressedLayerBytes", "layerCount", "mediaType", "manifestBytes", "configBytes", "annotations", "config", "layers", "history"],
+        "properties": {
+          "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "platform": {"type": "string"},
+          "configDigest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "compressedLayerBytes": {"type": "integer", "minimum": 0},
+          "layerCount": {"type": "integer", "minimum": 0},
+          "mediaType": {"type": "string"},
+          "manifestBytes": {"type": "integer", "minimum": 0},
+          "configBytes": {"type": "integer", "minimum": 0},
+          "created": {"type": "string"},
+          "author": {"type": "string"},
+          "variant": {"type": "string"},
+          "annotations": {"type": "object", "additionalProperties": {"type": "string"}},
+          "config": {
+            "type": "object",
+            "additionalProperties": false,
+            "description": "Declared execution parameters; absent or null optional fields are omitted and no runtime defaults are inferred.",
+            "properties": {
+              "User": {"type": "string"},
+              "Env": {"type": "array", "items": {"type": "string"}},
+              "Entrypoint": {"type": "array", "items": {"type": "string"}},
+              "Cmd": {"type": "array", "items": {"type": "string"}},
+              "WorkingDir": {"type": "string"},
+              "Labels": {"type": "object", "additionalProperties": {"type": "string"}},
+              "ExposedPorts": {"type": "object", "additionalProperties": {"type": "object", "additionalProperties": false}},
+              "Volumes": {"type": "object", "additionalProperties": {"type": "object", "additionalProperties": false}},
+              "StopSignal": {"type": "string"},
+              "ArgsEscaped": {"type": "boolean"}
+            }
+          },
+          "layers": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["digest", "mediaType", "size", "diffId"],
+              "properties": {
+                "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+                "mediaType": {"type": "string"},
+                "size": {"type": "integer", "minimum": 0},
+                "diffId": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$", "description": "Declared SHA-256 of the uncompressed layer; stat does not verify layer contents."}
+              }
+            }
+          },
+          "history": {
+            "type": "array",
+            "description": "Declared history in order. Entries with emptyLayer true have no layer fields; nonempty entries are associated with successive layers.",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["emptyLayer"],
+              "properties": {
+                "created": {"type": "string"},
+                "createdBy": {"type": "string"},
+                "author": {"type": "string"},
+                "comment": {"type": "string"},
+                "emptyLayer": {"type": "boolean"},
+                "layerIndex": {"type": "integer", "minimum": 0},
+                "layerDigest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+                "diffId": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
