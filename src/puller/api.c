@@ -1,7 +1,6 @@
 /* SPDX-License-Identifier: MPL-2.0 */
 #include "src/puller/internal.h"
 #include "src/materializer/internal.h"
-#include "src/puller/tls_version.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -93,6 +92,28 @@ maelys_oci_result_t maelys_oci_resolve(
     return oci_public_wrap(document, out_document);
 }
 
+maelys_oci_result_t maelys_oci_stat_remote(
+    const maelys_oci_pull_options_t *options, const char *reference,
+    const char *platform, maelys_oci_document_t **out_document, char **out_error) {
+    if (out_error) *out_error = NULL;
+    if (!out_document) return MAELYS_OCI_ERR_ARGUMENT;
+    *out_document = NULL;
+    if (!reference) return MAELYS_OCI_ERR_ARGUMENT;
+    pull_options_t request = {
+        .reference = reference, .platform = platform,
+        .ca_file = options ? options->ca_file : NULL,
+        .token_file = options ? options->token_file : NULL,
+        .docker_config = options ? options->docker_config : NULL,
+        .expected_root = options ? options->expected_root : NULL,
+        .timeout_ms = options ? options->timeout_ms : MAELYS_OCI_PULL_TIMEOUT_MS};
+    oci_error_t error = OCI_ERROR_INIT;
+    oci_document_t *document = NULL;
+    if (oci_stat_remote(&request, &document, &error) != 0)
+        return oci_public_failed(&error, out_error);
+    oci_error_clear(&error);
+    return oci_public_wrap(document, out_document);
+}
+
 static maelys_oci_result_t public_error(oci_error_kind_t kind) {
     switch (kind) {
     case OCI_ERROR_ARGUMENT: return MAELYS_OCI_ERR_ARGUMENT;
@@ -111,15 +132,6 @@ maelys_oci_result_t maelys_oci_pull(const maelys_oci_pull_options_t *options,
     if (out_error) *out_error = NULL;
     if (!out_result) return MAELYS_OCI_ERR_ARGUMENT;
     *out_result = NULL;
-    unsigned int tls_version = oci_mbedtls_runtime_version();
-    if (!oci_mbedtls_version_secure(tls_version)) {
-        maelys_oci_set_error(out_error,
-            "Mbed TLS runtime %u.%u.%u is vulnerable to CVE-2025-27810; "
-            "require 2.28.10+, 3.6.3+ or 4+",
-            tls_version >> 24u, (tls_version >> 16u) & 0xffu,
-            (tls_version >> 8u) & 0xffu);
-        return MAELYS_OCI_ERR_UNSUPPORTED;
-    }
     maelys_oci_pull_result_t *result = calloc(1u, sizeof(*result));
     if (!result) return MAELYS_OCI_ERR_MEMORY;
     pull_options_t request = {.store = store, .reference = reference, .platform = platform,

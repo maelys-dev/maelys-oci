@@ -15,13 +15,13 @@
     "manifestBytes": {"type": "integer", "minimum": 1},
     "platforms": {
       "type": "array",
-      "description": "Platforms an index offers; empty for a single-platform manifest.",
+      "description": "Platforms declared by direct index descriptors only; nested indexes are not traversed. Not an exhaustive enumeration of runnable platforms; empty for a single manifest.",
       "items": {
         "type": "object",
         "additionalProperties": false,
         "required": ["platform", "digest", "mediaType", "supported"],
         "properties": {
-          "platform": {"type": "string", "description": "OS/ARCH of this manifest."},
+          "platform": {"type": "string", "description": "OS/ARCH declared by this direct descriptor."},
           "variant": {"type": "string", "description": "Architecture variant when the descriptor names one."},
           "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
           "mediaType": {"type": "string"},

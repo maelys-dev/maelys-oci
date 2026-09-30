@@ -148,6 +148,10 @@ static int resolve_node(resolution_walk_t *walk, const char *digest,
         if (resolve_config(walk->http, walk->reference, NULL, &candidate.image,
                 &candidate.config_bytes, &candidate.config_size) != 0) goto done;
         if (!platform_matches(descriptor, walk->platform)) { result = 0; goto done; }
+        /* Validate every occurrence before deduplicating: a repeated digest
+         * must not hide an inconsistent size, media type or config platform. */
+        if (walk->matches && strcmp(walk->selected->image.manifest.digest,
+                descriptor->digest) == 0) { result = 0; goto done; }
         if (++walk->matches != 1u) {
             pull_report(walk->http, OCI_ERROR_STATE,
                 "the registry index requires one unambiguous --platform selector");

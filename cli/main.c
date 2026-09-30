@@ -264,7 +264,8 @@ static const maelys_cli_option_t resolve_options[] = {
      MAELYS_CLI_DEFAULT_OF(MAELYS_OCI_PULL_TIMEOUT_MS)},
 };
 
-static int command_resolve(maelys_cli_context_t *context) {
+static int registry_options(maelys_cli_context_t *context,
+    maelys_oci_pull_options_t **out_options) {
     maelys_oci_pull_options_t *options = NULL;
     uint64_t timeout_ms = 0u;
     (void)maelys_cli_option_unsigned(context, "timeout-ms", &timeout_ms);
@@ -276,12 +277,50 @@ static int command_resolve(maelys_cli_context_t *context) {
         maelys_oci_pull_options_release(&options);
         return maelys_cli_fail(context, MAELYS_CLI_CODE_UNEXPECTED,
             "Report this defect to the command implementation.",
-            "Cannot construct validated resolve options.");
+            "Cannot construct validated registry options.");
     }
+    *out_options = options;
+    return 0;
+}
+
+static int command_resolve(maelys_cli_context_t *context) {
+    maelys_oci_pull_options_t *options = NULL;
+    int status = registry_options(context, &options);
+    if (maelys_cli_replied(context)) return status;
     maelys_oci_document_t *document = NULL;
     char *error = NULL;
     maelys_oci_result_t result = maelys_oci_resolve(options,
         maelys_cli_operand(context, 0u), &document, &error);
+    maelys_oci_pull_options_release(&options);
+    if (result != MAELYS_OCI_OK) return fail_with(context, result, error);
+    return succeed_document(context, document, MAELYS_CLI_EXIT_OK);
+}
+
+static const maelys_cli_option_t stat_remote_options[] = {
+    {MAELYS_CLI_CHOICE("platform",
+     "Select one distinct image; required when several images match.", pull_platforms)},
+    {MAELYS_CLI_ABSOLUTE_PATH("ca-file", "FILE",
+     "CA bundle; defaults to SSL_CERT_FILE or the system bundle.")},
+    {MAELYS_CLI_ABSOLUTE_PATH("token-file", "FILE",
+     "Private file holding a registry bearer token."),
+     .conflicts_with = "docker-config"},
+    {MAELYS_CLI_ABSOLUTE_PATH("docker-config", "FILE",
+     "Private Docker config.json with static auths; credential helpers are "
+     "refused."), .conflicts_with = "token-file"},
+    {MAELYS_CLI_UNSIGNED("timeout-ms", "N",
+     "Global deadline in milliseconds.", 1u, MAELYS_OCI_PULL_TIMEOUT_MAX_MS),
+     MAELYS_CLI_DEFAULT_OF(MAELYS_OCI_PULL_TIMEOUT_MS)},
+};
+
+static int command_stat_remote(maelys_cli_context_t *context) {
+    maelys_oci_pull_options_t *options = NULL;
+    int status = registry_options(context, &options);
+    if (maelys_cli_replied(context)) return status;
+    maelys_oci_document_t *document = NULL;
+    char *error = NULL;
+    maelys_oci_result_t result = maelys_oci_stat_remote(options,
+        maelys_cli_operand(context, 0u), maelys_cli_option(context, "platform"),
+        &document, &error);
     maelys_oci_pull_options_release(&options);
     if (result != MAELYS_OCI_OK) return fail_with(context, result, error);
     return succeed_document(context, document, MAELYS_CLI_EXIT_OK);
@@ -428,8 +467,13 @@ static const maelys_cli_command_t commands[] = {
      command_pull),
      MAELYS_CLI_OPERANDS(pull_operands), MAELYS_CLI_OPTIONS(pull_options),
      MAELYS_CLI_SCHEMA(oci_pull_schema)},
+    {MAELYS_CLI_READ("stat-remote", "stat-remote",
+     "Inspect verified registry metadata; layers and DiffIDs remain declared.",
+     command_stat_remote),
+     MAELYS_CLI_OPERANDS(pull_operands), MAELYS_CLI_OPTIONS(stat_remote_options),
+     MAELYS_CLI_SCHEMA(oci_stat_remote_schema)},
     {MAELYS_CLI_READ("resolve", "resolve",
-     "Resolve a tag into the digest the registry serves.", command_resolve),
+     "Resolve a tag and report platforms declared at the top level only.", command_resolve),
      MAELYS_CLI_OPERANDS(resolve_operands), MAELYS_CLI_OPTIONS(resolve_options),
      MAELYS_CLI_SCHEMA(oci_resolve_schema)},
     {MAELYS_CLI_RECORDS("list", "list",

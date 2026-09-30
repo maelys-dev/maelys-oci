@@ -137,8 +137,11 @@ int reference_parse_tagged(const char *text, pull_reference_t *out,
 int fetch_manifest_tag(pull_http_t *http, const pull_reference_t *reference,
     const char *tag, unsigned char **out_bytes, size_t *out_size,
     pull_headers_t *out_headers);
-/* Resolves a tag into its digest and the platforms it offers. */
+/* Resolves a tag into its digest and direct descriptors' declared platforms. */
 int oci_resolve_tag(const pull_options_t *options,
+    oci_document_t **out_document, oci_error_t *error);
+/* Metadata only: no store, no layer downloads and no materialization. */
+int oci_stat_remote(const pull_options_t *options,
     oci_document_t **out_document, oci_error_t *error);
 void reference_clear(pull_reference_t *reference);
 int reference_parse(const char *text, pull_reference_t *out);

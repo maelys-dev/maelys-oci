@@ -228,6 +228,9 @@ def main():
             nested = add({'schemaVersion': 2, 'mediaType': INDEX_MEDIA,
                           'manifests': [descriptor(assets[index], INDEX_MEDIA)]})
             assert json.loads(pull('nested', nested, platform='linux/arm64').stdout)['data']['manifestDigest'] == arm
+            repeated = add({'schemaVersion': 2, 'mediaType': INDEX_MEDIA,
+                            'manifests': [descriptor(assets[arm], MANIFEST_MEDIA)] * 2})
+            assert json.loads(pull('repeated', repeated).stdout)['data']['manifestDigest'] == arm
             amd_descriptor = json.loads(assets[index])['manifests'][1]
             inner = add({'schemaVersion': 2, 'mediaType': INDEX_MEDIA, 'manifests': [amd_descriptor]})
             wrong_parent = descriptor(assets[inner], INDEX_MEDIA)

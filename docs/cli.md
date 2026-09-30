@@ -17,7 +17,8 @@ Common contract: `agent-cli/v2`. For the machine-readable detail run
 | stat | `stat SOURCE` | read | json-envelope | Describe the configuration, layers and history of runnable OCI images. |
 | import | `import SOURCE [--store DIRECTORY] [--platform OS/ARCH] [--digest sha256:HEX] [--expect-root sha256:HEX] [--apply]` | preview then apply with --apply | json-envelope | Materialize one manifest of an OCI layout into the immutable store. |
 | pull | `pull REFERENCE [--platform linux/arm64\|linux/amd64] [--store DIRECTORY] [--ca-file FILE] [--token-file FILE] [--docker-config FILE] [--timeout-ms N] [--expect-root sha256:HEX]` | execute | json-envelope | Acquire an image from a registry over HTTPS and materialize it. |
-| resolve | `resolve REFERENCE [--ca-file FILE] [--token-file FILE] [--docker-config FILE] [--timeout-ms N]` | read | json-envelope | Resolve a tag into the digest the registry serves. |
+| stat-remote | `stat-remote REFERENCE [--platform linux/arm64\|linux/amd64] [--ca-file FILE] [--token-file FILE] [--docker-config FILE] [--timeout-ms N]` | read | json-envelope | Inspect verified registry metadata; layers and DiffIDs remain declared. |
+| resolve | `resolve REFERENCE [--ca-file FILE] [--token-file FILE] [--docker-config FILE] [--timeout-ms N]` | read | json-envelope | Resolve a tag and report platforms declared at the top level only. |
 | list | `list [--store DIRECTORY]` | read | json-records | List the artifacts published in the store. |
 | verify | `verify [--store DIRECTORY]` | read | json-envelope | Verify every blob, closure, artifact and lease of the store; exit 2 on integrity errors. |
 | gc | `gc [--store DIRECTORY] [--grace-seconds SECONDS] [--apply]` | preview then apply with --apply | json-envelope | Collect unreachable blobs, stale leases and abandoned temporary state. |

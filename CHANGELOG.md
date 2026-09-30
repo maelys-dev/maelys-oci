@@ -2,6 +2,26 @@
 
 ## Unreleased
 
+- **ABI 7: `stat-remote REFERENCE` inspects immutable registry metadata.**
+  `maelys_oci_stat_remote` accepts `REGISTRY/REPOSITORY@sha256:HEX`, shares
+  pull's bounded index traversal, TLS, authentication and global deadline,
+  and requires one distinct supported image (with `--platform` when needed).
+  It opens no store and downloads no layers. Its single manifest has the
+  same shape and formatter as local `stat`; the new remote v1 document
+  names the checked reference, manifest and config digests, and explicitly
+  marks layers and DiffIDs unverified and the root unmaterialized. Metadata
+  integrity is not an execution or security verdict. The selected metadata
+  total and rendered report retain stat's limits. Expected-root options are
+  refused by this operation; there is no root to compare. Store formats and
+  materializer policy are unchanged.
+- Repeated references to the same remote manifest no longer make `pull`
+  or `stat-remote` ambiguous. Each occurrence is still checked against its
+  descriptor before deduplication; two distinct matching manifests fail.
+- Clarify that `resolve` lists platforms declared by direct index
+  descriptors only. It reads one manifest by tag, does not traverse nested
+  indexes and does not promise an exhaustive platform inventory.
+- Enforce the TLS runtime security floor at shared session initialization,
+  so metadata-only operations receive the same check as `pull`.
 - Adopt maelys-release v0.62.2 (from v0.62.1). Its remote writes in `cut`,
   `tap` and `migrate` are now read back before being reported as published.
   The generated CI and release workflows use the new pinned commit; the

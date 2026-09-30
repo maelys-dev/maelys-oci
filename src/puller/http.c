@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: MPL-2.0 */
 #include "src/puller/internal.h"
+#include "src/puller/tls_version.h"
 
 #include <maelys/sys/clock.h>
 #include <errno.h>
@@ -217,6 +218,17 @@ int http_initialize(
     memset(http, 0, sizeof(*http));
     http->timeout_ms = options->timeout_ms;
     http->error = error;
+    /* Every registry operation, including metadata-only reads, uses the
+     * same runtime security floor before creating a TLS session. */
+    unsigned int tls_version = oci_mbedtls_runtime_version();
+    if (!oci_mbedtls_version_secure(tls_version)) {
+        pull_report(http, OCI_ERROR_UNSUPPORTED,
+            "Mbed TLS runtime %u.%u.%u is vulnerable to CVE-2025-27810; "
+            "require 2.28.10+, 3.6.3+ or 4+",
+            tls_version >> 24u, (tls_version >> 16u) & 0xffu,
+            (tls_version >> 8u) & 0xffu);
+        return -1;
+    }
     if (!http->timeout_ms || maelys_sys_deadline_after(http->timeout_ms,
             &http->deadline) != MAELYS_SYS_OK) {
         pull_report(http, OCI_ERROR_ARGUMENT, "pull timeout must be finite and positive");

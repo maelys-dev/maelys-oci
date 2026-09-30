@@ -39,7 +39,7 @@ check "version matches the VERSION file" '[ "$code" = 0 ] && [ "$out" = "maelys-
 
 run describe "$oci" describe --summary --format json --compact --non-interactive
 check "describe summary is a silent envelope" '[ "$code" = 0 ] && [ -z "$err" ] && json_data "$work/out" "d[\"contract\"]" | grep -q "agent-cli/v2"'
-check "describe lists every product command" '[ "$(json_data "$work/out" "sorted(c[\"id\"] for c in data[\"commands\"] if c[\"id\"] not in (\"help\",\"version\",\"describe\",\"completion\",\"complete.candidates\"))")" = "['"'"'gc'"'"', '"'"'import'"'"', '"'"'inspect'"'"', '"'"'list'"'"', '"'"'pull'"'"', '"'"'remove'"'"', '"'"'resolve'"'"', '"'"'stat'"'"', '"'"'unpack-rootfs'"'"', '"'"'verify'"'"']" ]'
+check "describe lists every product command" '[ "$(json_data "$work/out" "sorted(c[\"id\"] for c in data[\"commands\"] if c[\"id\"] not in (\"help\",\"version\",\"describe\",\"completion\",\"complete.candidates\"))")" = "['"'"'gc'"'"', '"'"'import'"'"', '"'"'inspect'"'"', '"'"'list'"'"', '"'"'pull'"'"', '"'"'remove'"'"', '"'"'resolve'"'"', '"'"'stat'"'"', '"'"'stat-remote'"'"', '"'"'unpack-rootfs'"'"', '"'"'verify'"'"']" ]'
 
 run describe-import "$oci" describe import --json --compact
 check "import is a plan/apply transaction with a schema" 'json_data "$work/out" "data[\"commands\"][0][\"effect\"]" | grep -q "plan.*preview.*apply" && json_data "$work/out" "data[\"commands\"][0][\"outputSchema\"][\"required\"]" | grep -q "artifact"'

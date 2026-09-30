@@ -1042,6 +1042,393 @@
           },
           "external": false,
           "hidden": false,
+          "id": "stat-remote",
+          "input": {
+            "constraints": [
+              {
+                "kind": "at-most-one",
+                "options": [
+                  "--token-file",
+                  "--docker-config"
+                ]
+              },
+              {
+                "kind": "at-most-one",
+                "options": [
+                  "--docker-config",
+                  "--token-file"
+                ]
+              }
+            ],
+            "operands": [
+              {
+                "name": "REFERENCE",
+                "required": true,
+                "summary": "Immutable image reference REGISTRY/REPOSITORY@sha256:HEX.",
+                "variadic": false
+              }
+            ],
+            "options": [
+              {
+                "argument": {
+                  "choices": [
+                    "linux/arm64",
+                    "linux/amd64"
+                  ],
+                  "name": "VALUE",
+                  "type": "choice"
+                },
+                "conflictsWith": [],
+                "long": "--platform",
+                "repeatable": false,
+                "required": false,
+                "requires": [],
+                "summary": "Select one distinct image; required when several images match."
+              },
+              {
+                "argument": {
+                  "name": "FILE",
+                  "type": "absolute-path"
+                },
+                "conflictsWith": [],
+                "long": "--ca-file",
+                "repeatable": false,
+                "required": false,
+                "requires": [],
+                "summary": "CA bundle; defaults to SSL_CERT_FILE or the system bundle."
+              },
+              {
+                "argument": {
+                  "name": "FILE",
+                  "type": "absolute-path"
+                },
+                "conflictsWith": [
+                  "--docker-config"
+                ],
+                "long": "--token-file",
+                "repeatable": false,
+                "required": false,
+                "requires": [],
+                "summary": "Private file holding a registry bearer token."
+              },
+              {
+                "argument": {
+                  "name": "FILE",
+                  "type": "absolute-path"
+                },
+                "conflictsWith": [
+                  "--token-file"
+                ],
+                "long": "--docker-config",
+                "repeatable": false,
+                "required": false,
+                "requires": [],
+                "summary": "Private Docker config.json with static auths; credential helpers are refused."
+              },
+              {
+                "argument": {
+                  "maximum": 86400000,
+                  "minimum": 1,
+                  "name": "N",
+                  "type": "unsigned"
+                },
+                "conflictsWith": [],
+                "default": "300000",
+                "long": "--timeout-ms",
+                "repeatable": false,
+                "required": false,
+                "requires": [],
+                "summary": "Global deadline in milliseconds."
+              }
+            ],
+            "passthrough": false,
+            "synopsis": "stat-remote REFERENCE [--platform linux/arm64|linux/amd64] [--ca-file FILE] [--token-file FILE] [--docker-config FILE] [--timeout-ms N]"
+          },
+          "outputMode": "json-envelope",
+          "outputSchema": {
+            "additionalProperties": false,
+            "properties": {
+              "manifests": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "annotations": {
+                      "additionalProperties": {
+                        "type": "string"
+                      },
+                      "type": "object"
+                    },
+                    "author": {
+                      "type": "string"
+                    },
+                    "compressedLayerBytes": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "config": {
+                      "additionalProperties": false,
+                      "description": "Declared execution parameters; absent or null optional fields are omitted and no runtime defaults are inferred.",
+                      "properties": {
+                        "ArgsEscaped": {
+                          "type": "boolean"
+                        },
+                        "Cmd": {
+                          "items": {
+                            "type": "string"
+                          },
+                          "type": "array"
+                        },
+                        "Entrypoint": {
+                          "items": {
+                            "type": "string"
+                          },
+                          "type": "array"
+                        },
+                        "Env": {
+                          "items": {
+                            "type": "string"
+                          },
+                          "type": "array"
+                        },
+                        "ExposedPorts": {
+                          "additionalProperties": {
+                            "additionalProperties": false,
+                            "type": "object"
+                          },
+                          "type": "object"
+                        },
+                        "Labels": {
+                          "additionalProperties": {
+                            "type": "string"
+                          },
+                          "type": "object"
+                        },
+                        "StopSignal": {
+                          "type": "string"
+                        },
+                        "User": {
+                          "type": "string"
+                        },
+                        "Volumes": {
+                          "additionalProperties": {
+                            "additionalProperties": false,
+                            "type": "object"
+                          },
+                          "type": "object"
+                        },
+                        "WorkingDir": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "configBytes": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "configDigest": {
+                      "pattern": "^sha256:[0-9a-f]{64}$",
+                      "type": "string"
+                    },
+                    "created": {
+                      "type": "string"
+                    },
+                    "digest": {
+                      "pattern": "^sha256:[0-9a-f]{64}$",
+                      "type": "string"
+                    },
+                    "history": {
+                      "description": "Declared history in order. Entries with emptyLayer true have no layer fields; nonempty entries are associated with successive layers.",
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "author": {
+                            "type": "string"
+                          },
+                          "comment": {
+                            "type": "string"
+                          },
+                          "created": {
+                            "type": "string"
+                          },
+                          "createdBy": {
+                            "type": "string"
+                          },
+                          "diffId": {
+                            "pattern": "^sha256:[0-9a-f]{64}$",
+                            "type": "string"
+                          },
+                          "emptyLayer": {
+                            "type": "boolean"
+                          },
+                          "layerDigest": {
+                            "pattern": "^sha256:[0-9a-f]{64}$",
+                            "type": "string"
+                          },
+                          "layerIndex": {
+                            "minimum": 0,
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "emptyLayer"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "layerCount": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "layers": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "diffId": {
+                            "description": "Declared SHA-256 of the uncompressed layer; stat does not verify layer contents.",
+                            "pattern": "^sha256:[0-9a-f]{64}$",
+                            "type": "string"
+                          },
+                          "digest": {
+                            "pattern": "^sha256:[0-9a-f]{64}$",
+                            "type": "string"
+                          },
+                          "mediaType": {
+                            "type": "string"
+                          },
+                          "size": {
+                            "minimum": 0,
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "digest",
+                          "mediaType",
+                          "size",
+                          "diffId"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "manifestBytes": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "mediaType": {
+                      "type": "string"
+                    },
+                    "platform": {
+                      "type": "string"
+                    },
+                    "variant": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "digest",
+                    "platform",
+                    "configDigest",
+                    "compressedLayerBytes",
+                    "layerCount",
+                    "mediaType",
+                    "manifestBytes",
+                    "configBytes",
+                    "annotations",
+                    "config",
+                    "layers",
+                    "history"
+                  ],
+                  "type": "object"
+                },
+                "maxItems": 1,
+                "minItems": 1,
+                "type": "array"
+              },
+              "reference": {
+                "description": "Immutable REGISTRY/REPOSITORY@sha256:HEX reference given.",
+                "type": "string"
+              },
+              "registry": {
+                "type": "string"
+              },
+              "repository": {
+                "type": "string"
+              },
+              "schema": {
+                "const": "maelys.oci-remote-stat/v1"
+              },
+              "verification": {
+                "additionalProperties": false,
+                "description": "Metadata integrity only. Layers and DiffIDs are declarations; no filesystem is materialized and no safety verdict is issued. Skipped platforms are not verified.",
+                "properties": {
+                  "configDigest": {
+                    "description": "Verified SHA-256 of the selected image configuration bytes.",
+                    "pattern": "^sha256:[0-9a-f]{64}$",
+                    "type": "string"
+                  },
+                  "diffIdsVerified": {
+                    "const": false
+                  },
+                  "layersVerified": {
+                    "const": false
+                  },
+                  "manifestDigest": {
+                    "description": "Verified SHA-256 of the selected image manifest bytes.",
+                    "pattern": "^sha256:[0-9a-f]{64}$",
+                    "type": "string"
+                  },
+                  "materialized": {
+                    "const": false
+                  },
+                  "referenceDigest": {
+                    "description": "Verified SHA-256 of the requested manifest or root index bytes.",
+                    "pattern": "^sha256:[0-9a-f]{64}$",
+                    "type": "string"
+                  },
+                  "scope": {
+                    "const": "metadata-only"
+                  }
+                },
+                "required": [
+                  "scope",
+                  "referenceDigest",
+                  "manifestDigest",
+                  "configDigest",
+                  "layersVerified",
+                  "diffIdsVerified",
+                  "materialized"
+                ],
+                "type": "object"
+              }
+            },
+            "required": [
+              "schema",
+              "reference",
+              "registry",
+              "repository",
+              "verification",
+              "manifests"
+            ],
+            "type": "object"
+          },
+          "pattern": [
+            "stat-remote"
+          ],
+          "purpose": "Inspect verified registry metadata; layers and DiffIDs remain declared.",
+          "usage": "stat-remote REFERENCE [--platform linux/arm64|linux/amd64] [--ca-file FILE] [--token-file FILE] [--docker-config FILE] [--timeout-ms N]"
+        },
+        {
+          "available": true,
+          "effect": "read",
+          "exitCodes": {
+            "0": "command completed",
+            "1": "execution failed",
+            "2": "valid report with violations"
+          },
+          "external": false,
+          "hidden": false,
           "id": "resolve",
           "input": {
             "constraints": [
@@ -1146,7 +1533,7 @@
                 "type": "string"
               },
               "platforms": {
-                "description": "Platforms an index offers; empty for a single-platform manifest.",
+                "description": "Platforms declared by direct index descriptors only; nested indexes are not traversed. Not an exhaustive enumeration of runnable platforms; empty for a single manifest.",
                 "items": {
                   "additionalProperties": false,
                   "properties": {
@@ -1158,7 +1545,7 @@
                       "type": "string"
                     },
                     "platform": {
-                      "description": "OS/ARCH of this manifest.",
+                      "description": "OS/ARCH declared by this direct descriptor.",
                       "type": "string"
                     },
                     "supported": {
@@ -1216,7 +1603,7 @@
           "pattern": [
             "resolve"
           ],
-          "purpose": "Resolve a tag into the digest the registry serves.",
+          "purpose": "Resolve a tag and report platforms declared at the top level only.",
           "usage": "resolve REFERENCE [--ca-file FILE] [--token-file FILE] [--docker-config FILE] [--timeout-ms N]"
         },
         {

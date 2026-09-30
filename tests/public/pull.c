@@ -9,6 +9,27 @@
 #include <stdlib.h>
 #include <string.h>
 
+static void remote_errors(maelys_oci_pull_options_t *options) {
+    maelys_oci_document_t *document = NULL;
+    char *error = NULL;
+    assert(maelys_oci_stat_remote(NULL, NULL, NULL, &document, &error) == MAELYS_OCI_ERR_ARGUMENT);
+    assert(!document && !error);
+    assert(maelys_oci_stat_remote(NULL, "invalid", NULL, NULL, &error) == MAELYS_OCI_ERR_ARGUMENT);
+    assert(!error);
+    assert(maelys_oci_stat_remote(NULL, "invalid", NULL, &document, &error) == MAELYS_OCI_ERR_ARGUMENT);
+    assert(!document && error);
+    maelys_oci_error_free(error);
+    assert(maelys_oci_stat_remote(NULL, "invalid", "windows/amd64", &document, &error) == MAELYS_OCI_ERR_ARGUMENT);
+    assert(!document && error);
+    maelys_oci_error_free(error);
+    assert(maelys_oci_pull_options_set_expected_root(options,
+        "sha256:0000000000000000000000000000000000000000000000000000000000000000") == MAELYS_OCI_OK);
+    assert(maelys_oci_stat_remote(options, "invalid", NULL, &document, &error) == MAELYS_OCI_ERR_ARGUMENT);
+    assert(!document && error && strstr(error, "options"));
+    maelys_oci_error_free(error);
+    assert(maelys_oci_pull_options_set_expected_root(options, NULL) == MAELYS_OCI_OK);
+}
+
 int main(int argc, char **argv) {
     maelys_oci_pull_options_t *options = NULL;
     assert(maelys_oci_pull_options_create(NULL) == MAELYS_OCI_ERR_ARGUMENT);
@@ -19,6 +40,7 @@ int main(int argc, char **argv) {
     assert(maelys_oci_pull_options_set_token_file(options, "/private/token") == MAELYS_OCI_OK);
     assert(maelys_oci_pull_options_set_docker_config(options, "/private/config") == MAELYS_OCI_ERR_ARGUMENT);
     assert(maelys_oci_pull_options_set_token_file(options, NULL) == MAELYS_OCI_OK);
+    remote_errors(options);
     maelys_oci_pull_result_t *result = NULL;
     char *error = NULL;
     assert(maelys_oci_pull(options, "relative", "invalid", NULL, &result, &error) == MAELYS_OCI_ERR_ARGUMENT);
@@ -33,6 +55,19 @@ int main(int argc, char **argv) {
         assert(maelys_oci_pull_options_set_ca_file(options, ca) == MAELYS_OCI_OK);
         memset(ca, 'X', size - 1u); /* setter must own its copy */
         free(ca);
+        maelys_oci_document_t *document = NULL;
+        assert(maelys_oci_stat_remote(options, argv[2], NULL, &document, &error) == MAELYS_OCI_OK);
+        assert(document && !error);
+        assert(maelys_oci_document_count(document, "manifests") == 1u);
+        char *metadata = maelys_oci_document_text(document);
+        char *item = maelys_oci_document_item_text(document, "manifests", 0u);
+        maelys_oci_document_release(&document);
+        assert(!document && metadata && item);
+        assert(strstr(metadata, "\"layersVerified\":false"));
+        assert(strstr(metadata, "\"schema\":\"maelys.oci-remote-stat/v1\""));
+        assert(strstr(item, "\"platform\":\"linux/arm64\""));
+        maelys_oci_text_free(metadata);
+        maelys_oci_text_free(item);
         assert(maelys_oci_pull(options, argv[1], argv[2], NULL, &result, &error) == MAELYS_OCI_OK);
         assert(!error && result);
         assert(strcmp(maelys_oci_pull_result_requested_reference(result), argv[2]) == 0);
