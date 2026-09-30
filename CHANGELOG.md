@@ -20,8 +20,13 @@
 - Clarify that `resolve` lists platforms declared by direct index
   descriptors only. It reads one manifest by tag, does not traverse nested
   indexes and does not promise an exhaustive platform inventory.
-- Enforce the TLS runtime security floor at shared session initialization,
-  so metadata-only operations receive the same check as `pull`.
+- Apply OCI's explicit Mbed TLS runtime check (CVE-2025-27810) at shared
+  session initialization, including `resolve` and `stat-remote`. In 0.7.0
+  through 0.8.0, this OCI-level check ran only for `pull`; `resolve` already
+  used the pinned maelys-http v0.1.14 TLS provider, which independently
+  rejects unsupported runtime versions before creating a TLS context. The
+  move gives all registry operations the same early `UNSUPPORTED` diagnostic
+  for OCI's check, preserving the provider's stricter security policy.
 - Adopt maelys-release v0.62.2 (from v0.62.1). Its remote writes in `cut`,
   `tap` and `migrate` are now read back before being reported as published.
   The generated CI and release workflows use the new pinned commit; the
