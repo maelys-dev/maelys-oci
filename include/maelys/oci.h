@@ -19,6 +19,15 @@ extern "C" {
  * written for revision N compiles and links against this header and its
  * library when
  *     MAELYS_OCI_ABI_COMPATIBLE_SINCE <= N <= MAELYS_OCI_ABI_VERSION.
+ * Both bounds are needed: the lower one says nothing the consumer uses was
+ * broken, the upper one that what it uses exists. Revisions 4 to 6 do not
+ * define the lower one and all honour 4, so a consumer checks:
+ *     #ifndef MAELYS_OCI_ABI_COMPATIBLE_SINCE
+ *     #define MAELYS_OCI_ABI_COMPATIBLE_SINCE 4u
+ *     #endif
+ *     #if MAELYS_OCI_ABI_COMPATIBLE_SINCE > N || MAELYS_OCI_ABI_VERSION < N
+ *     #error "this maelys-oci does not serve revision N"
+ *     #endif
  * An incompatible change raises MAELYS_OCI_ABI_COMPATIBLE_SINCE to the
  * revision that makes it, and the changelog names that revision breaking.
  * The promise covers declarations, not behaviour: documents carry their own

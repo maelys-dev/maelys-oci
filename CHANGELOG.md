@@ -9,7 +9,10 @@
   same counter. A consumer that accepted any revision above a floor was
   relying on a promise this header had not made. It makes it now, at 4: a
   consumer written for revision N is served when
-  `MAELYS_OCI_ABI_COMPATIBLE_SINCE <= N <= MAELYS_OCI_ABI_VERSION`. An
+  `MAELYS_OCI_ABI_COMPATIBLE_SINCE <= N <= MAELYS_OCI_ABI_VERSION`: the
+  lower bound says nothing it uses was broken, the upper one that what it
+  uses exists, and the header gives the preprocessor check, with the
+  default of 4 for revisions 4 to 6, which do not define the floor. An
   incompatible change raises the floor to the revision that makes it, and
   this file names that revision breaking. The promise covers declarations,
   not behaviour. It is held by a test: `tests/public/abi-4.h` freezes the
