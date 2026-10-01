@@ -13,7 +13,10 @@ import sys
 import tarfile
 import tempfile
 
+from schema_assert import assert_schema
+
 OCI = pathlib.Path(sys.argv[1]).resolve()
+STAT_SCHEMA = json.loads((pathlib.Path(__file__).resolve().parents[1] / "cli/schemas/stat.json").read_text())
 INDEX = "application/vnd.oci.image.index.v1+json"
 MANIFEST = "application/vnd.oci.image.manifest.v1+json"
 CONFIG = "application/vnd.oci.image.config.v1+json"
@@ -93,6 +96,8 @@ def run(command, *arguments, code=0):
     envelope = json.loads(result.stdout if code == 0 else result.stderr)
     assert envelope["ok"] == (code == 0), envelope
     assert not (result.stderr if code == 0 else result.stdout), result
+    if code == 0 and command == "stat":
+        assert_schema(envelope["data"], STAT_SCHEMA)
     return envelope["data"] if code == 0 else envelope["error"]
 
 

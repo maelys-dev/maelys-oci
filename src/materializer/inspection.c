@@ -4,6 +4,7 @@
  * store operations.
  */
 #include "src/materializer/internal.h"
+#include "src/common/metadata.h"
 
 #include <errno.h>
 #include <fcntl.h>
@@ -330,21 +331,7 @@ oci_document_t *oci_inspection_document(
     }
     oci_document_release(array); /* root owns the retained array. */
     for (size_t i = 0u; i < count; ++i) {
-        char platform[OCI_PLATFORM_SIZE];
-        uint64_t layer_bytes = 0u;
-        for (size_t j = 0u; j < items[i].layer_count; ++j) {
-            if (UINT64_MAX - layer_bytes < items[i].layers[j].size) {
-                oci_document_release(root);
-                return NULL;
-            }
-            layer_bytes += items[i].layers[j].size;
-        }
-        oci_document_t *item = oci_manifest_platform(&items[i], platform) == 0 ? OCI_DOCUMENT_OBJECT(
-            {"digest", oci_document_string(items[i].manifest.digest)},
-            {"platform", oci_document_string(platform)},
-            {"configDigest", oci_document_string(items[i].config.digest)},
-            {"compressedLayerBytes", oci_document_integer((int64_t)layer_bytes)},
-            {"layerCount", oci_document_integer((int64_t)items[i].layer_count)}) : NULL;
+        oci_document_t *item = oci_manifest_summary(&items[i]);
         if (!item || oci_document_append(array, item) != 0) {
             oci_document_release(root);
             return NULL;

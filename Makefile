@@ -204,7 +204,8 @@ COMPLETIONS := $(BUILD)/share/completions/maelys-oci.bash \
 	$(BUILD)/share/completions/maelys-oci.fish
 
 COMMON_SOURCES := src/common/error.c src/common/io.c src/common/sha256.c \
-	src/common/descriptor.c src/common/config.c src/common/document.c
+	src/common/descriptor.c src/common/config.c src/common/document.c \
+	src/common/metadata.c
 STORE_SOURCES := src/store/core.c src/store/seal.c src/store/artifact.c \
 	src/store/blobs.c src/store/acquisition.c
 MATERIALIZER_SOURCES := src/materializer/source.c src/materializer/graph.c \
@@ -216,7 +217,7 @@ MATERIALIZER_SOURCES := src/materializer/source.c src/materializer/graph.c \
 PULLER_SOURCES := src/puller/reference.c src/puller/json.c \
 	src/puller/registry.c src/puller/auth.c src/puller/http.c \
 	src/puller/download.c src/puller/resolve.c src/puller/pull.c \
-	src/puller/tls_version.c src/puller/tag.c src/puller/api.c
+	src/puller/tls_version.c src/puller/tag.c src/puller/stat.c src/puller/api.c
 CLI_SOURCES := cli/main.c
 LIB_SOURCES := $(COMMON_SOURCES) $(STORE_SOURCES) $(MATERIALIZER_SOURCES) $(PULLER_SOURCES)
 LIB_OBJECTS := $(LIB_SOURCES:%.c=$(OBJ)/%.o)
@@ -474,6 +475,7 @@ check: all cli-check socle-check public-check parser-check source-check \
 	$(PYTHON) tests/test_oci_inspection.py $(abspath $(OCI_BIN))
 	$(PYTHON) tests/test_oci_integrity.py $(abspath $(OCI_BIN))
 	$(PYTHON) tests/test_oci_registry_pull.py $(abspath $(OCI_BIN)) $(abspath $(OCI_BIN))
+	$(PYTHON) tests/test_oci_remote_stat.py $(abspath $(OCI_BIN))
 	$(PYTHON) tests/test_oci_pull_recovery.py $(abspath $(OCI_BIN)) $(abspath $(PUBLIC_TEST))
 	$(PYTHON) tests/test_install.py $(BUILD)
 

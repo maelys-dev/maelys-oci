@@ -8,6 +8,7 @@ its terminal, built on [maelys-cli](../maelys-cli) and installable as the
 
 ```sh
 maelys-oci resolve registry.example/team/tool:1.4          # tag -> digest
+maelys-oci stat-remote registry.example/team/tool@sha256:HEX --platform linux/arm64
 maelys-oci inspect /absolute/layout
 maelys-oci import /absolute/layout --platform linux/arm64            # plan
 maelys-oci import /absolute/layout --platform linux/arm64 --apply    # materialize

@@ -10,7 +10,7 @@
 extern "C" {
 #endif
 
-#define MAELYS_OCI_ABI_VERSION 6u
+#define MAELYS_OCI_ABI_VERSION 7u
 #define MAELYS_OCI_DIGEST_HEX_SIZE 65u
 
 /* Versioned standalone materialization: image contents have no injected
@@ -198,8 +198,10 @@ typedef struct maelys_oci_document maelys_oci_document_t;
 
 /* Resolves REGISTRY/REPOSITORY:TAG into the digest of the manifest the
  * registry serves, computed from the bytes received and never taken from
- * a header, with the platforms an index offers. Reads only: no store is
- * opened and no blob is fetched. The document is
+ * a header, with platforms declared by its direct index descriptors only.
+ * Nested indexes are not traversed; this is not an exhaustive enumeration
+ * of runnable platforms. Reads only: no store is opened and no blob is
+ * fetched. The document is
  * {schema, registry, repository, tag, reference, digest, mediaType,
  * manifestBytes, platforms:[{platform, digest, mediaType, supported}]}. */
 maelys_oci_result_t maelys_oci_resolve(const maelys_oci_pull_options_t *options,
@@ -231,6 +233,23 @@ maelys_oci_result_t maelys_oci_inspect(
  * 8 MiB in aggregate and the document's JSON byte/token ceilings. */
 maelys_oci_result_t maelys_oci_stat(
     const char *source, maelys_oci_document_t **out_document, char **out_error);
+
+/* Inspects REGISTRY/REPOSITORY@sha256:HEX through the same bounded HTTPS
+ * traversal as pull, selecting exactly one distinct supported manifest.
+ * platform is NULL or linux/arm64 or linux/amd64; NULL never selects the
+ * host platform implicitly. Tags and bare digests are refused. NULL options
+ * uses pull's network defaults; expected_root is refused when set.
+ * The document's manifests array holds one item of the same shape as stat.
+ * verification names the checked reference, selected manifest and config
+ * digests and explicitly reports layersVerified=false, diffIdsVerified=false
+ * and materialized=false. Skipped platforms are not verified. This is
+ * metadata integrity, not a safety verdict or a prediction of execution.
+ * No store is read or written, no layer fetched and no root materialized.
+ * The selected manifest/config total at most 8 MiB; rendered JSON is bounded
+ * like stat. out_document is NULL on failure; the caller owns it on success. */
+maelys_oci_result_t maelys_oci_stat_remote(
+    const maelys_oci_pull_options_t *options, const char *reference,
+    const char *platform, maelys_oci_document_t **out_document, char **out_error);
 
 /* Import: plan by default, materialize with apply. Options own copied
  * strings; NULL clears one. The store is an absolute private directory,
