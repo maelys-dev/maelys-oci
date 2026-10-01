@@ -18,8 +18,10 @@
   not behaviour. It is held by a test: `tests/public/abi-4.h` freezes the
   header as revision 4 published it, and `make check` fails when one of its
   65 declarations or 11 macros no longer stands unchanged, an enumeration
-  being allowed to gain members after its last. No operation is added, so
-  the revision stays 7.
+  being allowed to gain members after its last. Public enumerations are
+  open, and `tests/public/enumerations.c`, compiled under `-Werror=switch`,
+  is the frozen consumer that stops compiling when one gains a member.
+  No operation is added, so the revision stays 7.
 - **ABI 7: `stat-remote REFERENCE` inspects immutable registry metadata.**
   `maelys_oci_stat_remote` accepts `REGISTRY/REPOSITORY@sha256:HEX`, shares
   pull's bounded index traversal, TLS, authentication and global deadline,

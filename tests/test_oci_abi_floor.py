@@ -91,6 +91,12 @@ def main():
     rest = [d for d in sample if d != listing]
     assert honoured(sample, rest + [grown]) == []
     assert honoured(sample, rest + [shrunk]) == [listing]
+    # Every public enumeration has its frozen consumer.
+    consumer = (FROZEN / "enumerations.c").read_text()
+    for listing in filter(None, map(enumeration, declarations(current))):
+        absent = [m.split("=")[0].strip() for m in listing[2]
+                  if f"case {m.split('=')[0].strip()}:" not in consumer]
+        assert not absent, f"{FROZEN}/enumerations.c does not switch on {absent} of {listing[1]}"
     print(f"PASS revision {version} honours every declaration of revision {floor} "
           f"({len(sample)} declarations, {len(macros(old)) - 1} macros)")
 
