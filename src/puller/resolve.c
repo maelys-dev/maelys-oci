@@ -93,6 +93,10 @@ static int resolve_node(resolution_walk_t *walk, const char *digest,
         &candidate.manifest_bytes, &candidate.manifest_size, &headers);
     if (manifest_answer_refused(walk->http, walk->reference, &headers))
         goto done;
+    /* A fetch that named its own cause (a refused token, a failed exchange)
+     * is not a manifest that disagrees with its descriptor. */
+    if (fetched != 0 && walk->http->error && walk->http->error->message)
+        goto done;
     if (fetched != 0 ||
         !headers.content_type ||
         !document_media_type_matches(candidate.manifest_bytes,

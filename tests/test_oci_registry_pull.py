@@ -210,6 +210,13 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return
         if parsed.path == "/token":
             query = urllib.parse.parse_qs(parsed.query, strict_parsing=True)
+            # A token endpoint that is unavailable, or answers no token.
+            if query.get("scope") == ["repository:busy/tool:pull"]:
+                self.reply(503)
+                return
+            if query.get("scope") == ["repository:tokenless/tool:pull"]:
+                self.reply(200, canonical({}), media="application/json")
+                return
             if authorization != BASIC or query != {
                     "scope": ["repository:example/tool:pull"],
                     "service": ["fixture"],
@@ -654,6 +661,58 @@ def main() -> int:
             assert mirrored["registry"] == authority, mirrored
             assert [authorization for _p, authorization, _c
                     in cdn.requests[foreign:]] == [None], cdn.requests[foreign:]
+
+            # A refused token exchange names the endpoint, the repository and
+            # the status, never the credential; it is an access failure whose
+            # hint says what to check, not a retry.
+            for command, target, extra in (
+                ("resolve", f"{authority}/denied/tool:1.0", []),
+                ("stat-remote", f"{authority}/denied/tool@{index_digest}",
+                 ["--platform", "linux/arm64"]),
+                ("pull", f"{authority}/denied/tool@{index_digest}",
+                 ["--platform", "linux/arm64", "--store", str(root / "denied")]),
+            ):
+                denied = run([
+                    puller, command, target, *extra,
+                    "--ca-file", str(ca_cert), "--docker-config", str(docker_config),
+                ], env=env, expected=1)
+                error = json.loads(denied.stderr)["error"]
+                assert error["code"] == "ACCESS_DENIED", (command, error)
+                assert error["message"] == (
+                    f"token endpoint {authority} refused a pull token for "
+                    "repository denied/tool with HTTP 401; the credentials "
+                    "given were refused or do not grant pull"), (command, error)
+                assert "registry credentials" in error["hint"], (command, error)
+                assert "etry" not in error["hint"], (command, error)
+                for secret in ("fixture:secret", BASIC, TOKEN):
+                    assert secret not in denied.stderr, (command, secret)
+
+            anonymous_config = root / "anonymous-config.json"
+            anonymous_config.write_text(json.dumps({"auths": {}}), encoding="utf-8")
+            anonymous_config.chmod(0o600)
+            anonymous = run([
+                puller, "resolve", f"{authority}/example/tool:1.0",
+                "--ca-file", str(ca_cert), "--docker-config", str(anonymous_config),
+            ], env=env, expected=1)
+            error = json.loads(anonymous.stderr)["error"]
+            assert error["code"] == "ACCESS_DENIED", error
+            assert "no credentials were given" in error["message"], error
+
+            busy = run([
+                puller, "resolve", f"{authority}/busy/tool:1.0",
+                "--ca-file", str(ca_cert), "--docker-config", str(docker_config),
+            ], env=env, expected=1)
+            error = json.loads(busy.stderr)["error"]
+            assert error["code"] == "IO_FAILED", error
+            assert f"token endpoint {authority} answered HTTP 503" in error["message"], error
+
+            tokenless = run([
+                puller, "resolve", f"{authority}/tokenless/tool:1.0",
+                "--ca-file", str(ca_cert), "--docker-config", str(docker_config),
+            ], env=env, expected=1)
+            error = json.loads(tokenless.stderr)["error"]
+            assert error["code"] == "PROTOCOL_FAILED", error
+            assert "answered without one usable token" in error["message"], error
 
             helper_config = root / "helper-config.json"
             helper_config.write_text(json.dumps({"credsStore": "desktop"}),

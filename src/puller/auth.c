@@ -500,10 +500,35 @@ int acquire_bearer_token(
     int result = http_get_once(
         http, authority, query, "application/json",
         http->basic_authorization, &headers, &body);
-    free(authority); free(query);
+    free(query);
+    /* A failed exchange reported itself. A refusal is named for what it is:
+     * the endpoint and its status, never the credential. When only a
+     * credential helper is configured the caller names that cause instead. */
+    if (result == 0 && headers.status != 200u &&
+        !(http->helper_credentials_present && !http->basic_authorization)) {
+        if (headers.status == 401u || headers.status == 403u)
+            pull_report(http, OCI_ERROR_ACCESS,
+                "token endpoint %s refused a pull token for repository %s "
+                "with HTTP %u; %s", authority, reference->repository,
+                headers.status, http->basic_authorization ?
+                "the credentials given were refused or do not grant pull" :
+                "no credentials were given and anonymous pull is not allowed");
+        else
+            pull_report(http, headers.status >= 500u || headers.status == 429u ?
+                OCI_ERROR_IO : OCI_ERROR_PROTOCOL,
+                "token endpoint %s answered HTTP %u to a pull token request "
+                "for repository %s", authority, headers.status,
+                reference->repository);
+    } else if (result == 0 && headers.status == 200u &&
+        (!headers.content_type ||
+         !oci_media_type_equal(headers.content_type, "application/json"))) {
+        pull_report(http, OCI_ERROR_PROTOCOL,
+            "token endpoint %s did not answer application/json", authority);
+    }
     if (result != 0 || headers.status != 200u ||
         !headers.content_type ||
         !oci_media_type_equal(headers.content_type, "application/json")) {
+        free(authority);
         headers_clear(&headers); body_clear(&body); return -1;
     }
     maelys_json_document_t *document = oci_json_parse_object(
@@ -537,6 +562,10 @@ int acquire_bearer_token(
     headers_clear(&headers);
     if (body.bytes) secret_wipe(body.bytes, body.size);
     body_clear(&body);
+    if (!authorization)
+        pull_report(http, OCI_ERROR_PROTOCOL,
+            "token endpoint %s answered without one usable token", authority);
+    free(authority);
     if (!authorization) return -1;
     secret_free(&http->bearer_authorization);
     http->bearer_authorization = authorization;

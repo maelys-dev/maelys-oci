@@ -20,13 +20,20 @@ int registry_get(
             "refusing an authentication challenge after a cross-authority redirect");
         return -1;
     }
+    int helper_only = http->helper_credentials_present &&
+        !http->basic_authorization && !http->bearer_authorization;
     if (!headers->www_authenticate || acquire_bearer_token(
             http, headers->www_authenticate, reference) != 0) {
-        if (http->helper_credentials_present &&
-            !http->basic_authorization && !http->bearer_authorization) {
+        if (helper_only) {
             pull_report(http, OCI_ERROR_UNSUPPORTED,
                 "the Docker credential helper is intentionally unsupported; "
                 "use --token-file");
+        } else if (!headers->www_authenticate) {
+            pull_report(http, OCI_ERROR_ACCESS,
+                "registry %s answered HTTP 401 without a challenge; %s",
+                reference->authority, authorization ?
+                "the credentials given were refused" :
+                "no credentials were given");
         }
         return -1;
     }
