@@ -100,7 +100,10 @@ requiring a rebuild; installation is also tested through a temporary `DESTDIR`.
 See [docs/open-core.md](docs/open-core.md) for the mandatory MPL/proprietary
 boundary.
 
-ABI 3 and artifact schema v7 keep materialization standalone. Materializer 9
+`MAELYS_OCI_ABI_VERSION` numbers the revisions of the public interface and
+`MAELYS_OCI_ABI_COMPATIBLE_SINCE` names the oldest one still honoured; a
+consumer written for revision N is served when it lies between the two.
+Artifact schema v7 keeps materialization standalone. Materializer 9
 verifies the ordered layer DiffIDs and applies whiteouts only to parent layers.
 No Warden helper or mount point is injected. A store still holding an
 artifact of a former schema is refused by every command, naming the way out;

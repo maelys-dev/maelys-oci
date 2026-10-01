@@ -525,6 +525,8 @@ $(PARSER_TEST): tests/fuzz/parsers.c $(PULL_LINK_LIBS)
 .PHONY: public-check parser-check fuzz
 public-check: $(PUBLIC_TEST) $(OPERATIONS_TEST) pkgconfig-check
 	$(CXX) -std=c++11 -Wall -Wextra -Werror -Iinclude -fsyntax-only tests/public/header.cpp
+	$(PYTHON) tests/test_oci_abi_floor.py include/maelys/oci.h tests/public
+	$(CC) -std=c11 -Wall -Wextra -Werror -Werror=switch -Iinclude -fsyntax-only tests/public/enumerations.c
 	$(PUBLIC_TEST)
 	@rm -rf $(BUILD)/tests/operations-scratch && mkdir -p $(BUILD)/tests/operations-scratch
 	$(OPERATIONS_TEST) $(abspath $(BUILD)/tests/operations-scratch)
