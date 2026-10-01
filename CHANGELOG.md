@@ -20,6 +20,14 @@
 - Clarify that `resolve` lists platforms declared by direct index
   descriptors only. It reads one manifest by tag, does not traverse nested
   indexes and does not promise an exhaustive platform inventory.
+- State what the digest `resolve` reports attests: the bytes the
+  TLS-authenticated registry served for the tag, hashed here. A
+  `Docker-Content-Digest` header that disagrees fails the resolution; one
+  that agrees, or none, adds no assurance and is not required. Behaviour is
+  unchanged; tests now pin the three cases (absent, agreeing, lying header
+  on a valid index). The existing lying-header test never reached that
+  check: the fixture refused its token exchange first, and the test only
+  asserted exit 1. It now asserts the code and the message.
 - Apply OCI's explicit Mbed TLS runtime check (CVE-2025-27810) at shared
   session initialization, including `resolve` and `stat-remote`. In 0.7.0
   through 0.8.0, this OCI-level check ran only for `pull`; `resolve` already

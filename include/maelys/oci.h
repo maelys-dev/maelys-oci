@@ -201,7 +201,13 @@ typedef struct maelys_oci_document maelys_oci_document_t;
  * a header, with platforms declared by its direct index descriptors only.
  * Nested indexes are not traversed; this is not an exhaustive enumeration
  * of runnable platforms. Reads only: no store is opened and no blob is
- * fetched. The document is
+ * fetched.
+ * The digest attests one thing: these are the bytes the TLS-authenticated
+ * authority (or the HTTPS host it redirected to) served for the tag at that
+ * moment. A Docker-Content-Digest header is optional: one that disagrees
+ * fails the resolution, one that agrees or is absent adds nothing, since the
+ * peer that wrote the body wrote the header too. It is the reference to pin;
+ * `pull` and `stat-remote` then verify every byte against it. The document is
  * {schema, registry, repository, tag, reference, digest, mediaType,
  * manifestBytes, platforms:[{platform, digest, mediaType, supported}]}. */
 maelys_oci_result_t maelys_oci_resolve(const maelys_oci_pull_options_t *options,
