@@ -42,6 +42,22 @@
   maelys-http removes `Authorization` when a redirect changes the authority,
   and a 401 received after such a redirect is refused; both are now tested
   for manifest requests.
+- A refused bearer token exchange is now named. `resolve`, `pull` and
+  `stat-remote` reported `IO_FAILED`, "the operation failed" and a hint to
+  retry when the token endpoint of a registry answered 401: nothing said
+  what had been refused, and retrying could not help. The diagnostic now
+  names the token endpoint host, the scope asked for and the HTTP status,
+  for example "token endpoint ghcr.io refused the configured credentials
+  for scope repository:org/tool:pull with HTTP 401", never the credential
+  nor a token. A 401 or 403 is `ACCESS_DENIED` (`MAELYS_OCI_ERR_ACCESS`,
+  formerly `MAELYS_OCI_ERR_IO`); a 429 or 5xx stays `IO_FAILED`; any other
+  status, or a 200 without a usable JSON token, is `PROTOCOL_FAILED`. A
+  registry that answers 401 without a Bearer challenge is named the same
+  way. On these three commands the `ACCESS_DENIED` hint now says to give
+  credentials that grant pull on the repository instead of pointing at
+  file modes only. A refused or unanswered manifest or config request no
+  longer has "does not match its descriptor" or "image config is absent"
+  appended to its cause. Affects 0.6.0 through 0.8.0.
 - Adopt maelys-release v0.62.2 (from v0.62.1). Its remote writes in `cut`,
   `tap` and `migrate` are now read back before being reported as published.
   The generated CI and release workflows use the new pinned commit; the

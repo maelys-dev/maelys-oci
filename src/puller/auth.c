@@ -445,6 +445,38 @@ static char *percent_encode(const char *value) {
     return encoded;
 }
 
+/* Names what the token endpoint answered when it issued no token: its host,
+ * the scope asked for and the HTTP status. Never the credential sent nor
+ * anything from the answer's body. A refusal is an access failure that a
+ * retry cannot change; only an unavailable endpoint is worth retrying. */
+static void token_answer_report(
+    pull_http_t *http, const char *authority, const char *scope,
+    unsigned status) {
+    const char *sent = http->basic_authorization ?
+        "the configured credentials" : "an anonymous request";
+    if (status == 401u || status == 403u) {
+        /* Credentials that only a helper holds were never sent: the cause is
+         * the unsupported helper, which registry_get names. */
+        pull_report(http, http->helper_credentials_present &&
+                !http->basic_authorization ?
+                OCI_ERROR_UNSUPPORTED : OCI_ERROR_ACCESS,
+            "token endpoint %s refused %s for scope %s with HTTP %u",
+            authority, sent, scope, status);
+    } else if (status == 429u || status >= 500u) {
+        pull_report(http, OCI_ERROR_IO,
+            "token endpoint %s is unavailable: it answered HTTP %u to the "
+            "request for scope %s", authority, status, scope);
+    } else if (status != 200u) {
+        pull_report(http, OCI_ERROR_PROTOCOL,
+            "token endpoint %s answered HTTP %u instead of a token for "
+            "scope %s", authority, status, scope);
+    } else {
+        pull_report(http, OCI_ERROR_PROTOCOL,
+            "token endpoint %s answered HTTP 200 without a usable JSON token "
+            "for scope %s", authority, scope);
+    }
+}
+
 int acquire_bearer_token(
     pull_http_t *http, const char *challenge, const pull_reference_t *reference) {
     pull_challenge_t parsed;
@@ -483,6 +515,7 @@ int acquire_bearer_token(
     if (!encoded_scope || (service && !encoded_service)) {
         free(realm); free(service); free(authority); free(target);
         free(encoded_scope); free(encoded_service);
+        pull_report(http, OCI_ERROR_MEMORY, "out of memory");
         return -1;
     }
     size_t query_size = strlen(target) + strlen(encoded_scope) +
@@ -494,17 +527,30 @@ int acquire_bearer_token(
         encoded_service ? encoded_service : "");
     free(realm); free(service); free(target);
     free(encoded_scope); free(encoded_service);
-    if (!query) { free(authority); return -1; }
+    if (!query) {
+        free(authority);
+        pull_report(http, OCI_ERROR_MEMORY, "out of memory");
+        return -1;
+    }
     pull_headers_t headers = {0};
     pull_body_t body = {.maximum = PULL_TOKEN_JSON_MAX, .fd = -1};
     int result = http_get_once(
         http, authority, query, "application/json",
         http->basic_authorization, &headers, &body);
-    free(authority); free(query);
-    if (result != 0 || headers.status != 200u ||
+    free(query);
+    if (result != 0) {
+        /* The exchange itself failed and said why; say with whom. */
+        pull_report(http, OCI_ERROR_IO,
+            "no answer from token endpoint %s", authority);
+        free(authority); headers_clear(&headers); body_clear(&body);
+        return -1;
+    }
+    if (headers.status != 200u ||
         !headers.content_type ||
         !oci_media_type_equal(headers.content_type, "application/json")) {
-        headers_clear(&headers); body_clear(&body); return -1;
+        token_answer_report(http, authority, expected_scope, headers.status);
+        free(authority); headers_clear(&headers); body_clear(&body);
+        return -1;
     }
     maelys_json_document_t *document = oci_json_parse_object(
         body.bytes, body.size, 1024u);
@@ -537,7 +583,12 @@ int acquire_bearer_token(
     headers_clear(&headers);
     if (body.bytes) secret_wipe(body.bytes, body.size);
     body_clear(&body);
-    if (!authorization) return -1;
+    if (!authorization) {
+        token_answer_report(http, authority, expected_scope, 200u);
+        free(authority);
+        return -1;
+    }
+    free(authority);
     secret_free(&http->bearer_authorization);
     http->bearer_authorization = authorization;
     return 0;

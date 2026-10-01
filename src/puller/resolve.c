@@ -22,6 +22,9 @@ static int resolve_config(
         selected->config.digest, PULL_CONFIG_MAX, &config_headers,
         &config, &config_size);
     headers_clear(&config_headers);
+    /* A request that was refused or never answered has said so: nothing was
+     * received that could be absent or altered. */
+    if (fetched != 0 && http->error && http->error->message) return -1;
     if (fetched != 0 || config_size != selected->config.size ||
         oci_config_parse(config, config_size, selected, http->error) != 0) {
         pull_report(http, OCI_ERROR_PROTOCOL,
@@ -92,6 +95,9 @@ static int resolve_node(resolution_walk_t *walk, const char *digest,
     int fetched = fetch_manifest_document(walk->http, walk->reference, digest,
         &candidate.manifest_bytes, &candidate.manifest_size, &headers);
     if (manifest_answer_refused(walk->http, walk->reference, &headers))
+        goto done;
+    /* Likewise: a refused or unanswered request is not a mismatch. */
+    if (fetched != 0 && walk->http->error && walk->http->error->message)
         goto done;
     if (fetched != 0 ||
         !headers.content_type ||

@@ -386,10 +386,43 @@ def main() -> int:
             assert not any("variant" in entry for entry in resolution["platforms"]), \
                 "a descriptor without a variant must still be reported"
 
-            # A digest claimed by the registry is never believed.
-            run([puller, "resolve", f"{authority}/lying/tool:broken",
-                 "--ca-file", str(ca_cert), "--docker-config", str(docker_config)],
-                env=env, expected=1)
+            # The token endpoint only issues tokens for example/tool. A
+            # refused exchange names the endpoint, the scope and the status,
+            # is an access failure that no retry can change, and reveals
+            # neither the credentials sent nor a token.
+            for command, target, extra in (
+                ("resolve", f"{authority}/lying/tool:broken", []),
+                ("stat-remote", f"{authority}/lying/tool@{index_digest}",
+                 ["--platform", "linux/arm64"]),
+                ("pull", f"{authority}/lying/tool@{index_digest}",
+                 ["--platform", "linux/arm64",
+                  "--store", str(root / "refused")]),
+            ):
+                before = len(server.requests)
+                refused = run([
+                    puller, command, target, *extra, "--ca-file", str(ca_cert),
+                    "--docker-config", str(docker_config),
+                ], env=env, expected=1)
+                assert refused.stdout == "", (command, refused.stdout)
+                error = json.loads(refused.stderr)["error"]
+                assert error["code"] == "ACCESS_DENIED", (command, error)
+                assert error["message"] == (
+                    f"token endpoint {authority} refused the configured "
+                    "credentials for scope repository:lying/tool:pull with "
+                    "HTTP 401"), (command, error)
+                assert "--docker-config" in error["hint"], (command, error)
+                assert "refused again" in error["hint"], (command, error)
+                assert "Retry" not in error["hint"], (command, error)
+                assert "verify" not in error["hint"], (command, error)
+                for secret in (TOKEN, "fixture:secret", BASIC,
+                               BASIC.split()[-1]):
+                    assert secret not in refused.stderr, (command, secret)
+                # One challenge, one refused exchange, and no second attempt.
+                assert [path for path, _a, _c in server.requests[before:]] \
+                    [-1] == "/token", (command, server.requests[before:])
+            assert not (root / "refused").exists() or \
+                not any((root / "refused").rglob("root.ext4"))
+
             # Neither an index nor an image manifest.
             run([puller, "resolve", f"{authority}/example/tool:unknown-type",
                  "--ca-file", str(ca_cert), "--docker-config", str(docker_config)],
@@ -442,6 +475,17 @@ def main() -> int:
             token_file = root / "token"
             token_file.write_text(TOKEN + "\n", encoding="ascii")
             token_file.chmod(0o600)
+            # A digest claimed by the registry is never believed. The token
+            # file reaches the manifest; the Docker credentials never did,
+            # their token exchange being refused for this repository.
+            lying = run([puller, "resolve", f"{authority}/lying/tool:broken",
+                         "--ca-file", str(ca_cert),
+                         "--token-file", str(token_file)],
+                        env=env, expected=1)
+            error = json.loads(lying.stderr)["error"]
+            assert error["code"] == "PROTOCOL_FAILED", error
+            assert error["message"] == "registry reports a digest the " \
+                "received bytes do not produce", error
             second = run([
                 puller, "pull", reference, "--platform", "linux/arm64",
                 "--store", str(store), "--ca-file", str(ca_cert),

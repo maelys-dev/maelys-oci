@@ -72,15 +72,23 @@ static int fail_with(
 }
 
 /* A registry answer that is no manifest is most often a reference naming a
- * host that is not the registry API: the hint says what to change. */
+ * host that is not the registry API: the hint says what to change. A refused
+ * registry or token request is a matter of credentials, not of file modes
+ * alone, and repeating it unchanged cannot succeed. */
 static int fail_registry(
     maelys_cli_context_t *context, maelys_oci_result_t result, char *error) {
-    if (result != MAELYS_OCI_ERR_PROTOCOL)
+    const char *hint;
+    if (result == MAELYS_OCI_ERR_PROTOCOL)
+        hint = "Name the registry API host in REFERENCE (Docker Hub is "
+            "registry-1.docker.io, not docker.io) and obtain a canonical OCI "
+            "image; the registry answer is invalid.";
+    else if (result == MAELYS_OCI_ERR_ACCESS)
+        hint = "Give credentials that grant pull on this repository with "
+            "--token-file or --docker-config, in a file private to its "
+            "owner; the same invocation will be refused again.";
+    else
         return fail_with(context, result, error);
-    int status = maelys_cli_fail(context, error_code(result),
-        "Name the registry API host in REFERENCE (Docker Hub is "
-        "registry-1.docker.io, not docker.io) and obtain a canonical OCI "
-        "image; the registry answer is invalid.",
+    int status = maelys_cli_fail(context, error_code(result), hint,
         "%s", error ? error : "The operation failed.");
     maelys_oci_error_free(error);
     return status;
