@@ -10,21 +10,7 @@
 extern "C" {
 #endif
 
-/* MAELYS_OCI_ABI_VERSION numbers the revisions of this interface. It rises
- * each time an operation is published or changed, whether or not a consumer
- * of an earlier revision is affected: a greater number alone promises
- * nothing. MAELYS_OCI_ABI_COMPATIBLE_SINCE is the oldest revision this one
- * still honours: every declaration of that revision stands here unchanged,
- * an enumeration having at most gained members after its last. A consumer
- * written for revision N compiles and links against this header and its
- * library when
- *     MAELYS_OCI_ABI_COMPATIBLE_SINCE <= N <= MAELYS_OCI_ABI_VERSION.
- * An incompatible change raises MAELYS_OCI_ABI_COMPATIBLE_SINCE to the
- * revision that makes it, and the changelog names that revision breaking.
- * The promise covers declarations, not behaviour: documents carry their own
- * schema identifiers, and stores and seals their own format versions. */
-#define MAELYS_OCI_ABI_VERSION 7u
-#define MAELYS_OCI_ABI_COMPATIBLE_SINCE 4u
+#define MAELYS_OCI_ABI_VERSION 4u
 #define MAELYS_OCI_DIGEST_HEX_SIZE 65u
 
 /* Versioned standalone materialization: image contents have no injected
@@ -75,9 +61,6 @@ maelys_oci_result_t maelys_oci_pull_options_set_ca_file(maelys_oci_pull_options_
 maelys_oci_result_t maelys_oci_pull_options_set_token_file(maelys_oci_pull_options_t *options, const char *path);
 maelys_oci_result_t maelys_oci_pull_options_set_docker_config(maelys_oci_pull_options_t *options, const char *path);
 maelys_oci_result_t maelys_oci_pull_options_set_timeout_ms(maelys_oci_pull_options_t *options, uint64_t timeout_ms);
-/* The digest "sha256:HEX" the materialized root must equal. A root that
- * differs fails the acquisition before anything is published. */
-maelys_oci_result_t maelys_oci_pull_options_set_expected_root(maelys_oci_pull_options_t *options, const char *digest);
 /* store is an absolute private path, created when absent. reference is
  * REGISTRY/REPOSITORY@sha256:HEX; platform is NULL, linux/arm64 or linux/amd64.
  * On failure *out_result is NULL. Optional out_error receives an owned
@@ -209,23 +192,6 @@ int maelys_oci_platform_valid(const char *platform);
  * records does not parse the text again.
  */
 typedef struct maelys_oci_document maelys_oci_document_t;
-
-/* Resolves REGISTRY/REPOSITORY:TAG into the digest of the manifest the
- * registry serves, computed from the bytes received and never taken from
- * a header, with platforms declared by its direct index descriptors only.
- * Nested indexes are not traversed; this is not an exhaustive enumeration
- * of runnable platforms. Reads only: no store is opened and no blob is
- * fetched.
- * The digest attests one thing: these are the bytes the TLS-authenticated
- * authority (or the HTTPS host it redirected to) served for the tag at that
- * moment. A Docker-Content-Digest header is optional: one that disagrees
- * fails the resolution, one that agrees or is absent adds nothing, since the
- * peer that wrote the body wrote the header too. It is the reference to pin;
- * `pull` and `stat-remote` then verify every byte against it. The document is
- * {schema, registry, repository, tag, reference, digest, mediaType,
- * manifestBytes, platforms:[{platform, digest, mediaType, supported}]}. */
-maelys_oci_result_t maelys_oci_resolve(const maelys_oci_pull_options_t *options,
-    const char *reference, maelys_oci_document_t **out_document, char **out_error);
 /* Canonical JSON of the document, owned by the caller (maelys_oci_text_free);
  * NULL on allocation failure or for a NULL document. */
 char *maelys_oci_document_text(const maelys_oci_document_t *document);
@@ -240,36 +206,9 @@ void maelys_oci_document_release(maelys_oci_document_t **document);
 void maelys_oci_text_free(char *text);
 
 /* Reads oci-layout and index.json of a layout directory or tar archive and
- * lists every distinct runnable manifest, including through nested indexes.
- * Traversal is bounded to eight nested indexes and 1024 descriptors. */
+ * lists every runnable manifest. */
 maelys_oci_result_t maelys_oci_inspect(
     const char *source, maelys_oci_document_t **out_document, char **out_error);
-
-/* The same read-only traversal with declared image configuration, manifest
- * annotations, per-layer descriptors and DiffIDs, and construction history.
- * Optional null metadata is omitted, unknown fields are ignored and no
- * runtime defaults are inferred. Layer contents are not verified or
- * materialized and the private store is not opened. Metadata is bounded to
- * 8 MiB in aggregate and the document's JSON byte/token ceilings. */
-maelys_oci_result_t maelys_oci_stat(
-    const char *source, maelys_oci_document_t **out_document, char **out_error);
-
-/* Inspects REGISTRY/REPOSITORY@sha256:HEX through the same bounded HTTPS
- * traversal as pull, selecting exactly one distinct supported manifest.
- * platform is NULL or linux/arm64 or linux/amd64; NULL never selects the
- * host platform implicitly. Tags and bare digests are refused. NULL options
- * uses pull's network defaults; expected_root is refused when set.
- * The document's manifests array holds one item of the same shape as stat.
- * verification names the checked reference, selected manifest and config
- * digests and explicitly reports layersVerified=false, diffIdsVerified=false
- * and materialized=false. Skipped platforms are not verified. This is
- * metadata integrity, not a safety verdict or a prediction of execution.
- * No store is read or written, no layer fetched and no root materialized.
- * The selected manifest/config total at most 8 MiB; rendered JSON is bounded
- * like stat. out_document is NULL on failure; the caller owns it on success. */
-maelys_oci_result_t maelys_oci_stat_remote(
-    const maelys_oci_pull_options_t *options, const char *reference,
-    const char *platform, maelys_oci_document_t **out_document, char **out_error);
 
 /* Import: plan by default, materialize with apply. Options own copied
  * strings; NULL clears one. The store is an absolute private directory,
@@ -286,8 +225,6 @@ maelys_oci_result_t maelys_oci_import_options_set_platform(
     maelys_oci_import_options_t *options, const char *platform);
 maelys_oci_result_t maelys_oci_import_options_set_digest(
     maelys_oci_import_options_t *options, const char *digest);
-/* The digest "sha256:HEX" the materialized root must equal. */
-maelys_oci_result_t maelys_oci_import_options_set_expected_root(maelys_oci_import_options_t *options, const char *digest);
 maelys_oci_result_t maelys_oci_import_options_set_apply(
     maelys_oci_import_options_t *options, int apply);
 maelys_oci_result_t maelys_oci_import(

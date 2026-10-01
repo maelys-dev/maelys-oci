@@ -2,6 +2,9 @@
 #include <maelys/oci.h>
 #include <type_traits>
 static_assert(MAELYS_OCI_ABI_VERSION == 7, "remote image metadata");
+static_assert(MAELYS_OCI_ABI_COMPATIBLE_SINCE == 4, "public store operations");
+static_assert(MAELYS_OCI_ABI_COMPATIBLE_SINCE <= MAELYS_OCI_ABI_VERSION,
+    "the floor is a revision that exists");
 static_assert(std::is_pointer<maelys_oci_pull_options_t *>::value, "opaque options");
 static_assert(std::is_pointer<maelys_oci_pull_result_t *>::value, "opaque receipt");
 static_assert(std::is_pointer<maelys_oci_document_t *>::value, "opaque document");

@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+- **`MAELYS_OCI_ABI_COMPATIBLE_SINCE` says which consumers a revision still
+  serves.** `MAELYS_OCI_ABI_VERSION` rises each time an operation is
+  published, so a greater number never meant "additions only": revisions 5,
+  6 and 7 each added one, while 2 and 3 broke their predecessors under the
+  same counter. A consumer that accepted any revision above a floor was
+  relying on a promise this header had not made. It makes it now, at 4: a
+  consumer written for revision N is served when
+  `MAELYS_OCI_ABI_COMPATIBLE_SINCE <= N <= MAELYS_OCI_ABI_VERSION`. An
+  incompatible change raises the floor to the revision that makes it, and
+  this file names that revision breaking. The promise covers declarations,
+  not behaviour. It is held by a test: `tests/public/abi-4.h` freezes the
+  header as revision 4 published it, and `make check` fails when one of its
+  65 declarations or 11 macros no longer stands unchanged, an enumeration
+  being allowed to gain members after its last. No operation is added, so
+  the revision stays 7.
 - **ABI 7: `stat-remote REFERENCE` inspects immutable registry metadata.**
   `maelys_oci_stat_remote` accepts `REGISTRY/REPOSITORY@sha256:HEX`, shares
   pull's bounded index traversal, TLS, authentication and global deadline,
