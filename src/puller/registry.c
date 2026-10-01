@@ -81,8 +81,34 @@ int fetch_memory(
     pull_body_t body = {.maximum = maximum, .fd = -1, .hash_active = 1};
     maelys_oci_sha256_init(&body.hash);
     if (registry_get(http, reference, target, accept,
-                     out_headers, &body) != 0 ||
-        out_headers->status != 200u || !body.received) {
+                     out_headers, &body) != 0) {
+        body_clear(&body);
+        return -1;
+    }
+    if (out_headers->status != 200u) {
+        /* The status is the registry's answer: name it, with the object
+         * asked for. A manifest answered by another host after a redirect
+         * is named by the caller, with that host. */
+        unsigned status = out_headers->status;
+        if (!(accept && http->cross_authority && http->final_authority[0]))
+            pull_report(http,
+                status == 404u ? OCI_ERROR_NOT_FOUND :
+                status == 401u || status == 403u ? OCI_ERROR_ACCESS :
+                status == 429u || status >= 500u ? OCI_ERROR_IO :
+                OCI_ERROR_PROTOCOL,
+                "registry %s answered HTTP %u for %s%s", reference->authority,
+                status, target,
+                status == 404u ? "; the repository, tag or digest does not "
+                    "exist there" :
+                status == 401u || status == 403u ? "; the credentials do "
+                    "not grant pull on this repository" : "");
+        body_clear(&body);
+        return -1;
+    }
+    if (!body.received) {
+        pull_report(http, OCI_ERROR_PROTOCOL,
+            "registry %s answered an empty body for %s",
+            reference->authority, target);
         body_clear(&body);
         return -1;
     }

@@ -714,6 +714,31 @@ def main() -> int:
             assert error["code"] == "PROTOCOL_FAILED", error
             assert "answered without one usable token" in error["message"], error
 
+            # A tag, a digest or a repository the registry does not have is
+            # NOT_FOUND and names the status and the object asked for.
+            absent_digest = "sha256:" + "0" * 64
+            for command, target, extra, path in (
+                ("resolve", f"{authority}/example/tool:absent", [],
+                 "/v2/example/tool/manifests/absent"),
+                ("stat-remote", f"{authority}/example/tool@{absent_digest}",
+                 ["--platform", "linux/arm64"],
+                 f"/v2/example/tool/manifests/{absent_digest}"),
+                ("pull", f"{authority}/example/tool@{absent_digest}",
+                 ["--platform", "linux/arm64", "--store", str(root / "absent")],
+                 f"/v2/example/tool/manifests/{absent_digest}"),
+            ):
+                absent = run([
+                    puller, command, target, *extra,
+                    "--ca-file", str(ca_cert), "--token-file", str(token_file),
+                ], env=env, expected=1)
+                error = json.loads(absent.stderr)["error"]
+                assert error["code"] == "NOT_FOUND", (command, error)
+                assert error["message"] == (
+                    f"registry {authority} answered HTTP 404 for {path}; the "
+                    "repository, tag or digest does not exist there"), \
+                    (command, error)
+                assert "reference" in error["hint"], (command, error)
+
             helper_config = root / "helper-config.json"
             helper_config.write_text(json.dumps({"credsStore": "desktop"}),
                                      encoding="utf-8")
