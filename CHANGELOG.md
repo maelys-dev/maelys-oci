@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Pin maelys-cli v0.5.31 (from v0.5.30). Its dispatcher reads an extension
+  manifest with the directory it resolves to judged, instead of refusing a
+  symbolic link, so a manifest that a package manager links into its prefix
+  is no longer refused for being a link. This product reads no file through
+  the framework's trusted readers, so its own code is unchanged; the agent
+  instructions and the guide are regenerated from the pinned commit.
+- Pin maelys-system v0.11.0 (from v0.9.1), still ABI 1. It adds descriptor
+  passing over AF_UNIX sockets, which this product does not call, and 0.10.1
+  makes a byte-only socket receive consume the control data it was sent.
 - **The interface's promise is checked for every revision it serves.** The
   header serves a consumer written for any revision from the floor to the
   current one, but `make check` compared the current header with the floor's
