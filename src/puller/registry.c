@@ -43,6 +43,8 @@ int fetch_memory(
     unsigned char **out_bytes, size_t *out_size) {
     *out_bytes = NULL;
     *out_size = 0u;
+    http->cross_authority = 0;
+    http->final_authority[0] = '\0';
     if (http->store && expected_digest) {
         int cached = oci_store_blob_read(http->store, expected_digest, maximum,
             out_bytes, out_size);
@@ -62,6 +64,7 @@ int fetch_memory(
             }
             if (!accept || media[0]) {
                 out_headers->status = 200u;
+                out_headers->from_cache = 1;
                 out_headers->content_type = accept ? strdup(media) : NULL;
                 if (!accept || out_headers->content_type) return 0;
             }

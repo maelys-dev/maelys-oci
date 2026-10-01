@@ -216,6 +216,26 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 return
             self.reply(200, canonical({"token": TOKEN}), media="application/json")
             return
+        # A host that is not a registry API endpoint: it answers a manifest
+        # request with a redirect to another host, which serves a web page,
+        # nothing at all, or (a front for a real registry) the manifest.
+        redirected = parsed.path.split("/")[2] if parsed.path.startswith("/v2/") else ""
+        if redirected in ("moved", "moved-gone", "mirror"):
+            if self.server.cdn_authority:
+                self.reply(302, extra={
+                    "Location": f"https://{self.server.cdn_authority}{parsed.path}"
+                })
+                return
+            if redirected == "moved":
+                self.reply(200, b"<!doctype html><title>Not a registry</title>",
+                           media="text/html; charset=utf-8")
+                return
+            if redirected == "moved-gone":
+                self.reply(404, b"<html>gone</html>", media="text/html")
+                return
+        if parsed.path.startswith("/v2/html/tool/") and authorization == f"Bearer {TOKEN}":
+            self.reply(200, b"<html>maintenance</html>", media="text/html")
+            return
         if (parsed.path.startswith("/v2/foreign-realm/tool/") and
                 authorization != f"Bearer {TOKEN}"):
             self.reply(401, extra={
@@ -225,7 +245,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 )
             })
             return
-        if parsed.path.startswith("/v2/") and authorization != f"Bearer {TOKEN}":
+        if (parsed.path.startswith("/v2/") and redirected != "mirror" and
+                authorization != f"Bearer {TOKEN}"):
             port = self.server.server_address[1]
             self.reply(401, extra={
                 "WWW-Authenticate": (
@@ -525,6 +546,84 @@ def main() -> int:
                     "--ca-file", str(ca_cert), "--token-file", str(token_file),
                 ], env=env, expected=1)
                 assert message in failed.stderr
+
+            # A manifest request redirected to another host that serves a web
+            # page (docker.io answers this way): the diagnostic names the
+            # host and the Content-Type received, the code stays stable, the
+            # hint says what to change, and the bearer token sent to the
+            # registry never follows the redirect.
+            cdn_authority = server.cdn_authority
+            for command, target, extra in (
+                ("resolve", f"{authority}/moved/tool:1.0", []),
+                ("stat-remote", f"{authority}/moved/tool@{index_digest}",
+                 ["--platform", "linux/arm64"]),
+                ("pull", f"{authority}/moved/tool@{index_digest}",
+                 ["--platform", "linux/arm64", "--store", str(root / "moved")]),
+            ):
+                before = len(server.requests)
+                foreign = len(cdn.requests)
+                moved = run([
+                    puller, command, target, *extra,
+                    "--ca-file", str(ca_cert), "--token-file", str(token_file),
+                ], env=env, expected=1)
+                assert moved.stdout == "", (command, moved.stdout)
+                error = json.loads(moved.stderr)["error"]
+                assert error["code"] == "PROTOCOL_FAILED", (command, error)
+                assert (f"registry answered text/html from {cdn_authority} "
+                        "after a redirect") in error["message"], (command, error)
+                assert f"{authority} does not serve the registry API" in \
+                    error["message"], (command, error)
+                assert "disagrees" not in error["message"], (command, error)
+                assert "does not match its descriptor" not in error["message"], \
+                    (command, error)
+                assert "registry API host" in error["hint"], (command, error)
+                assert "Retry" not in error["hint"], (command, error)
+                assert TOKEN not in moved.stderr, command
+                sent = server.requests[before:]
+                assert sent and all(authorization == f"Bearer {TOKEN}"
+                                    for _path, authorization, _c in sent), sent
+                followed = cdn.requests[foreign:]
+                assert [path.split("/")[2] for path, _a, _c in followed] == \
+                    ["moved"], (command, followed)
+                assert all(authorization is None
+                           for _path, authorization, _c in followed), followed
+            assert not (root / "moved").exists() or \
+                not any((root / "moved").rglob("root.ext4"))
+
+            # The other host answers no page at all: the status is named.
+            gone = run([
+                puller, "resolve", f"{authority}/moved-gone/tool:1.0",
+                "--ca-file", str(ca_cert), "--token-file", str(token_file),
+            ], env=env, expected=1)
+            error = json.loads(gone.stderr)["error"]
+            assert error["code"] == "PROTOCOL_FAILED", error
+            assert f"registry answered HTTP 404 from {cdn_authority} after a redirect" \
+                in error["message"], error
+
+            # The same page served by the requested host itself: no redirect
+            # is claimed, the Content-Type is still named.
+            page = run([
+                puller, "resolve", f"{authority}/html/tool:1.0",
+                "--ca-file", str(ca_cert), "--token-file", str(token_file),
+            ], env=env, expected=1)
+            error = json.loads(page.stderr)["error"]
+            assert error["code"] == "PROTOCOL_FAILED", error
+            assert f"registry {authority} answered text/html to a manifest request" \
+                in error["message"], error
+            assert "redirect" not in error["message"], error
+
+            # A cross-host redirect to a host that does serve the manifest
+            # (registry.k8s.io fronts its backends this way) is still
+            # followed, without the credentials of the first host.
+            foreign = len(cdn.requests)
+            mirrored = json.loads(run([
+                puller, "resolve", f"{authority}/mirror/tool:1.0",
+                "--ca-file", str(ca_cert), "--token-file", str(token_file),
+            ], env=env).stdout)["data"]
+            assert mirrored["digest"] == index_digest, mirrored
+            assert mirrored["registry"] == authority, mirrored
+            assert [authorization for _p, authorization, _c
+                    in cdn.requests[foreign:]] == [None], cdn.requests[foreign:]
 
             helper_config = root / "helper-config.json"
             helper_config.write_text(json.dumps({"credsStore": "desktop"}),

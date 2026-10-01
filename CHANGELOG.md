@@ -27,6 +27,21 @@
   rejects unsupported runtime versions before creating a TLS context. The
   move gives all registry operations the same early `UNSUPPORTED` diagnostic
   for OCI's check, preserving the provider's stricter security policy.
+- A manifest request answered by something that is not a registry is now
+  named for what it is. `resolve docker.io/library/alpine:3.21` reported
+  "manifest media type disagrees with its content": `docker.io` redirects
+  `/v2/` to `www.docker.com`, which serves a web page. `resolve`, `pull` and
+  `stat-remote` now report the Content-Type (or the HTTP status) received
+  and, when a redirect changed it, the host that answered, for example
+  "registry answered text/html from www.docker.com after a redirect;
+  docker.io is not a registry API endpoint, use registry-1.docker.io". The
+  code stays `PROTOCOL_FAILED`; its hint on these three commands now says to
+  name the registry API host in REFERENCE. Affects 0.7.1 through 0.8.0.
+  Cross-host redirects of manifest requests are still followed, over HTTPS
+  only: `registry.k8s.io` serves its manifests that way. The pinned
+  maelys-http removes `Authorization` when a redirect changes the authority,
+  and a 401 received after such a redirect is refused; both are now tested
+  for manifest requests.
 - Adopt maelys-release v0.62.2 (from v0.62.1). Its remote writes in `cut`,
   `tap` and `migrate` are now read back before being reported as published.
   The generated CI and release workflows use the new pinned commit; the

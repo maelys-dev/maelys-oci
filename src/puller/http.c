@@ -176,7 +176,10 @@ maelys_http_redirect_decision_t safe_redirect(
     memcpy(name, authority.data, authority.length);
     name[authority.length] = '\0';
     if (!authority_valid(name)) return MAELYS_HTTP_REDIRECT_DENY;
-    if (!slice_equal(old_authority, name)) http->cross_authority = 1;
+    if (!slice_equal(old_authority, name)) {
+        http->cross_authority = 1;
+        memcpy(http->final_authority, name, authority.length + 1u);
+    }
     ++http->requests;
     return MAELYS_HTTP_REDIRECT_FOLLOW;
 }
@@ -193,6 +196,57 @@ int index_header_media_type(const char *value) {
                "application/vnd.oci.image.index.v1+json") ||
         oci_media_type_equal(value,
                "application/vnd.docker.distribution.manifest.list.v2+json");
+}
+
+/* A header value is the peer's text: only its media type, bounded and in
+ * printable ASCII, enters a diagnostic. */
+static void printable_media_type(const char *value, char out[96]) {
+    size_t length = 0u;
+    for (; value && value[length] && value[length] != ';' && length < 95u;
+         ++length) {
+        unsigned char byte = (unsigned char)value[length];
+        out[length] = byte > 0x20u && byte < 0x7fu && byte != '"' &&
+            byte != '\\' ? (char)byte : '?';
+    }
+    while (length && out[length - 1u] == '?') --length;
+    out[length] = '\0';
+}
+
+int manifest_answer_refused(pull_http_t *http,
+    const pull_reference_t *reference, const pull_headers_t *headers) {
+    /* A transport failure or a cache hit: no registry answered. */
+    if (!headers->status || headers->from_cache) return 0;
+    int redirected = http->cross_authority && http->final_authority[0];
+    if (headers->status == 200u && headers->content_type &&
+        (manifest_header_media_type(headers->content_type) ||
+         index_header_media_type(headers->content_type))) return 0;
+    if (headers->status != 200u && !redirected) return 0;
+    char received[128];
+    if (headers->status != 200u) {
+        (void)snprintf(received, sizeof(received), "HTTP %u", headers->status);
+    } else {
+        char media[96];
+        printable_media_type(headers->content_type, media);
+        (void)snprintf(received, sizeof(received), "%s",
+            media[0] ? media : "no Content-Type");
+    }
+    if (!redirected) {
+        pull_report(http, OCI_ERROR_PROTOCOL,
+            "registry %s answered %s to a manifest request, which is neither "
+            "an OCI nor a Docker manifest media type",
+            reference->authority, received);
+    } else if (strcmp(reference->authority, "docker.io") == 0) {
+        pull_report(http, OCI_ERROR_PROTOCOL,
+            "registry answered %s from %s after a redirect; docker.io is not "
+            "a registry API endpoint, use registry-1.docker.io",
+            received, http->final_authority);
+    } else {
+        pull_report(http, OCI_ERROR_PROTOCOL,
+            "registry answered %s from %s after a redirect; %s does not "
+            "serve the registry API for this manifest, name the host that does",
+            received, http->final_authority, reference->authority);
+    }
+    return 1;
 }
 
 const char *discover_ca_file(const char *explicit_path) {
@@ -351,6 +405,7 @@ int http_get_once(
         }
         ++http->requests;
         http->cross_authority = 0;
+        http->final_authority[0] = '\0';
         result = maelys_http_exchange_create(
             http->client, request, deadline, &exchange);
         while (result == MAELYS_HTTP_OK || result == MAELYS_HTTP_AGAIN) {

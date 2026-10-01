@@ -104,6 +104,9 @@ int oci_resolve_tag(const pull_options_t *options, oci_document_t **out_document
     int result = http_initialize(&http, options, &reference, error);
     if (result) goto done;
     result = fetch_manifest_tag(&http, &reference, tag, &bytes, &size, &headers);
+    /* What answered is named before anything is said about its content: a
+     * page served by another host is not a manifest that disagrees. */
+    if (manifest_answer_refused(&http, &reference, &headers)) result = -1;
     if (result) goto done;
     char hex[MAELYS_OCI_DIGEST_HEX_SIZE];
     char digest[OCI_DIGEST_SIZE];
