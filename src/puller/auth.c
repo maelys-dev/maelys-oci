@@ -501,15 +501,34 @@ int acquire_bearer_token(
         http, authority, query, "application/json",
         http->basic_authorization, &headers, &body);
     free(query);
+    /* The host that answered is the one named: after a redirect it is not
+     * the endpoint asked, and it never received the credentials. The
+     * redirect belongs to this exchange, not to the registry request the
+     * caller reports on, so its trace is consumed here. */
+    int redirected = http->cross_authority && http->final_authority[0];
+    char endpoint[600];
+    if (redirected)
+        (void)snprintf(endpoint, sizeof(endpoint), "%s redirected to %s, which",
+            authority, http->final_authority);
+    else (void)snprintf(endpoint, sizeof(endpoint), "%s", authority);
+    http->cross_authority = 0;
+    http->final_authority[0] = '\0';
     /* A failed exchange reported itself. A refusal is named for what it is:
      * the endpoint and its status, never the credential. When only a
      * credential helper is configured the caller names that cause instead. */
     if (result == 0 && headers.status != 200u &&
         !(http->helper_credentials_present && !http->basic_authorization)) {
-        if (headers.status == 401u || headers.status == 403u)
+        if (redirected && (headers.status == 401u || headers.status == 403u))
+            pull_report(http, OCI_ERROR_ACCESS,
+                "token endpoint %s answered HTTP %u to a token request for "
+                "scope %s; %s", endpoint, headers.status, expected_scope,
+                http->basic_authorization ?
+                "credentials are not sent to another host" :
+                "no credentials were given");
+        else if (headers.status == 401u || headers.status == 403u)
             pull_report(http, OCI_ERROR_ACCESS,
                 "token endpoint %s refused a token for scope %s "
-                "with HTTP %u; %s", authority, expected_scope,
+                "with HTTP %u; %s", endpoint, expected_scope,
                 headers.status, http->basic_authorization ?
                 "the credentials given were refused or do not grant pull" :
                 "no credentials were given and anonymous pull is not allowed");
@@ -517,12 +536,12 @@ int acquire_bearer_token(
             pull_report(http, headers.status >= 500u || headers.status == 429u ?
                 OCI_ERROR_IO : OCI_ERROR_PROTOCOL,
                 "token endpoint %s answered HTTP %u to a token request "
-                "for scope %s", authority, headers.status, expected_scope);
+                "for scope %s", endpoint, headers.status, expected_scope);
     } else if (result == 0 && headers.status == 200u &&
         (!headers.content_type ||
          !oci_media_type_equal(headers.content_type, "application/json"))) {
         pull_report(http, OCI_ERROR_PROTOCOL,
-            "token endpoint %s did not answer application/json", authority);
+            "token endpoint %s did not answer application/json", endpoint);
     }
     if (result != 0 || headers.status != 200u ||
         !headers.content_type ||
@@ -563,7 +582,7 @@ int acquire_bearer_token(
     body_clear(&body);
     if (!authorization)
         pull_report(http, OCI_ERROR_PROTOCOL,
-            "token endpoint %s answered without one usable token", authority);
+            "token endpoint %s answered without one usable token", endpoint);
     free(authority);
     if (!authorization) return -1;
     secret_free(&http->bearer_authorization);

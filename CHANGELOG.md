@@ -10,7 +10,11 @@
   these commands the `ACCESS_DENIED` hint says to check the credentials,
   their file and the repository. A token endpoint answering 5xx or 429 stays
   `IO_FAILED` and names the status; one answering no usable token is
-  `PROTOCOL_FAILED`. A 401 without a challenge is `ACCESS_DENIED`. `pull`
+  `PROTOCOL_FAILED`. A 401 without a challenge is `ACCESS_DENIED`. When
+  the token endpoint redirects to another host, that host is the one named
+  and the credentials, which are never sent to it, are not said to be
+  refused; the redirect is no longer reported as one of the manifest
+  request. `pull`
   and `stat-remote` no longer append "does not match its descriptor" or
   "image config is absent, altered…" to a fetch that already named its
   cause.

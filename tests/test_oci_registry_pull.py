@@ -208,6 +208,16 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if self.expire_on_next_request or parsed.path.startswith("/v2/unavailable/tool/"):
             self.close_connection = True
             return
+        # A token endpoint that redirects to another host, which refuses: the
+        # credentials stop at the first host.
+        if parsed.path == "/token-moved":
+            if self.server.cdn_authority:
+                self.reply(307, extra={
+                    "Location": f"https://{self.server.cdn_authority}{self.path}"
+                })
+            else:
+                self.reply(401)
+            return
         if parsed.path == "/token":
             query = urllib.parse.parse_qs(parsed.query, strict_parsing=True)
             # A token endpoint that is unavailable, or answers no token.
@@ -244,6 +254,16 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 return
         if parsed.path.startswith("/v2/html/tool/") and authorization == f"Bearer {TOKEN}":
             self.reply(200, b"<html>maintenance</html>", media="text/html")
+            return
+        if (parsed.path.startswith("/v2/token-moved/tool/") and
+                authorization != f"Bearer {TOKEN}"):
+            port = self.server.server_address[1]
+            self.reply(401, extra={
+                "WWW-Authenticate": (
+                    f'Bearer realm="https://localhost:{port}/token-moved",'
+                    'service="fixture",scope="repository:token-moved/tool:pull"'
+                )
+            })
             return
         if (parsed.path.startswith("/v2/foreign-realm/tool/") and
                 authorization != f"Bearer {TOKEN}"):
@@ -689,6 +709,36 @@ def main() -> int:
                 assert "etry" not in error["hint"], (command, error)
                 for secret in ("fixture:secret", BASIC, TOKEN):
                     assert secret not in denied.stderr, (command, secret)
+
+            # The token endpoint redirects to another host, which refuses.
+            # The host that answered is named, the credentials are not said
+            # to be refused (they never left the first host), and the
+            # redirect is not presented as one of the manifest request.
+            for command, target, extra in (
+                ("resolve", f"{authority}/token-moved/tool:1.0", []),
+                ("stat-remote", f"{authority}/token-moved/tool@{index_digest}",
+                 ["--platform", "linux/arm64"]),
+                ("pull", f"{authority}/token-moved/tool@{index_digest}",
+                 ["--platform", "linux/arm64",
+                  "--store", str(root / "token-moved")]),
+            ):
+                foreign = len(cdn.requests)
+                moved = run([
+                    puller, command, target, *extra,
+                    "--ca-file", str(ca_cert), "--docker-config", str(docker_config),
+                ], env=env, expected=1)
+                error = json.loads(moved.stderr)["error"]
+                assert error["code"] == "ACCESS_DENIED", (command, error)
+                assert error["message"] == (
+                    f"token endpoint {authority} redirected to "
+                    f"{server.cdn_authority}, which answered HTTP 401 to a "
+                    "token request for scope repository:token-moved/tool:pull; "
+                    "credentials are not sent to another host"), (command, error)
+                assert [(path, authorization) for path, authorization, _c
+                        in cdn.requests[foreign:]] == [("/token-moved", None)], \
+                    (command, cdn.requests[foreign:])
+                for secret in ("fixture:secret", BASIC, TOKEN):
+                    assert secret not in moved.stderr, (command, secret)
 
             anonymous_config = root / "anonymous-config.json"
             anonymous_config.write_text(json.dumps({"auths": {}}), encoding="utf-8")
