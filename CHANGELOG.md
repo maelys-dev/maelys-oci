@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.9.0 - 2026-10-01
 
 - **`MAELYS_OCI_ABI_COMPATIBLE_SINCE` says which consumers a revision still
   serves.** `MAELYS_OCI_ABI_VERSION` rises each time an operation is
