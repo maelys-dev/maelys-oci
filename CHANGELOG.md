@@ -2,6 +2,25 @@
 
 ## Unreleased
 
+- **The interface's promise is checked for every revision it serves.** The
+  header serves a consumer written for any revision from the floor to the
+  current one, but `make check` compared the current header with the floor's
+  alone: a later revision could have dropped `maelys_oci_resolve`, added in
+  5, and passed, while a consumer of revision 5 no longer linked. The headers
+  of revisions 5 and 6 are now frozen beside the floor's
+  (`tests/public/abi-5.h`, `abi-6.h`), the current header must carry every
+  declaration of each, and a new revision cannot be made without freezing
+  its predecessor. Nothing published was affected: revisions 5, 6 and 7 are
+  additions, measured.
+- The default of 4 that the header gives a consumer facing revisions 4 to 6,
+  which do not define the floor, is proved by that same check for each of
+  them, as the family's ABI policy asks, and no longer by a measurement made
+  once. The header names that proof.
+- The header said its promise covered declarations and not behaviour. It
+  now says what the policy says: a declaration whose contract changes under
+  an unchanged signature is an incompatible change, and raises the floor.
+  What documents, stores and seals hold stays versioned by their own
+  identifiers. No declaration changes, so the revision stays 7.
 - A refused registry token exchange is now named. `resolve`, `pull` and
   `stat-remote` reported `IO_FAILED` "the operation failed" with a retry
   hint when the token endpoint answered 401 or 403. They now report
