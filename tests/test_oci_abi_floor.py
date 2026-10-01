@@ -1,13 +1,22 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MPL-2.0
-"""MAELYS_OCI_ABI_COMPATIBLE_SINCE is held to the header it names.
+"""MAELYS_OCI_ABI_COMPATIBLE_SINCE is held to every revision it serves.
 
-tests/public/abi-N.h is <maelys/oci.h> as revision N published it. Every
-declaration of that file must stand unchanged in the current header; an
-enumeration may only have gained members after its last. A declaration that
-moved fails here, and the way out is to raise the floor to the revision that
-moves it, freeze that header beside this one and name the break in the
-changelog: never to edit the frozen copy.
+tests/public/abi-N.h is <maelys/oci.h> as revision N published it. The header
+promises to serve a consumer written for any revision from the floor to the
+current one, so one frozen header is required for each of them below the
+current, and every declaration of each must stand unchanged in the current
+header; an enumeration may only have gained members after its last. Checking
+the floor alone would let a later revision drop what an intermediate one
+added. A new revision therefore freezes its predecessor in the same change.
+
+The revisions published before the floor was declared do not define it; the
+header names them and gives the consumer a default. That default is proved
+here for each of them: its frozen header loses nothing of the floor's.
+
+A declaration that moved fails here, and the way out is to raise the floor to
+the revision that moves it and name the break in the changelog: never to edit
+a frozen copy.
 """
 import pathlib
 import re
@@ -60,22 +69,53 @@ def honoured(old, current):
     return lost
 
 
+def frozen_revision(revision):
+    path = FROZEN / f"abi-{revision}.h"
+    assert path.is_file(), f"{path} must freeze the header of revision {revision}"
+    text = path.read_text()
+    assert macro(text, "MAELYS_OCI_ABI_VERSION") == revision, f"{path} is not revision {revision}"
+    return text
+
+
+def broken(old, new):
+    """What `new` no longer carries of `old`: declarations, then macros."""
+    lost = honoured(declarations(old), declarations(new))
+    now = macros(new)
+    moved = sorted(name for name, value in macros(old).items()
+                   if name != "MAELYS_OCI_ABI_VERSION" and now.get(name) != value)
+    return lost, moved
+
+
+# The revision that first published MAELYS_OCI_ABI_COMPATIBLE_SINCE. Those
+# before it, down to the floor, are served through the consumer's default.
+DECLARED_IN = 7
+
+
 def main():
     current = HEADER.read_text()
     version = macro(current, "MAELYS_OCI_ABI_VERSION")
     floor = macro(current, "MAELYS_OCI_ABI_COMPATIBLE_SINCE")
     assert 1 <= floor <= version, (floor, version)
-    frozen = FROZEN / f"abi-{floor}.h"
-    assert frozen.is_file(), f"{frozen} must freeze the header of revision {floor}"
-    old = frozen.read_text()
-    assert macro(old, "MAELYS_OCI_ABI_VERSION") == floor, f"{frozen} is not revision {floor}"
+    served = {revision: frozen_revision(revision) for revision in range(floor, version)}
+    old = served.get(floor, current)
 
-    lost = honoured(declarations(old), declarations(current))
-    assert not lost, "revision %d is no longer honoured:\n  %s" % (floor, "\n  ".join(lost))
-    now = macros(current)
-    moved = {name: value for name, value in macros(old).items()
-             if name != "MAELYS_OCI_ABI_VERSION" and now.get(name) != value}
-    assert not moved, f"macros of revision {floor} changed or disappeared: {sorted(moved)}"
+    for revision, text in served.items():
+        lost, moved = broken(text, current)
+        assert not lost, "revision %d is no longer honoured:\n  %s" % (revision, "\n  ".join(lost))
+        assert not moved, f"macros of revision {revision} changed or disappeared: {moved}"
+
+    undeclared = [revision for revision in served if revision < DECLARED_IN]
+    for revision in undeclared:
+        text = served[revision]
+        assert "MAELYS_OCI_ABI_COMPATIBLE_SINCE" not in macros(text), revision
+        lost, moved = broken(served[floor], text)
+        assert not lost and not moved, (
+            f"revision {revision} does not honour the floor {floor}: {lost or moved}")
+    if undeclared:
+        named = f"Revisions {undeclared[0]} to {undeclared[-1]}"
+        assert named in current, f"the header must name the revisions its default covers: {named}"
+        default = f" *     #define MAELYS_OCI_ABI_COMPATIBLE_SINCE {floor}u"
+        assert default in current, "the consumer's default must be the floor"
 
     # The check itself must tell a break from an addition.
     sample = declarations(old)
@@ -97,8 +137,10 @@ def main():
         absent = [m.split("=")[0].strip() for m in listing[2]
                   if f"case {m.split('=')[0].strip()}:" not in consumer]
         assert not absent, f"{FROZEN}/enumerations.c does not switch on {absent} of {listing[1]}"
-    print(f"PASS revision {version} honours every declaration of revision {floor} "
-          f"({len(sample)} declarations, {len(macros(old)) - 1} macros)")
+    print(f"PASS revision {version} honours every declaration of revisions "
+          f"{floor} to {version - 1}; revisions {undeclared[0]} to {undeclared[-1]} honour the floor"
+          if undeclared else
+          f"PASS revision {version} honours every declaration of revisions {floor} to {version - 1}")
 
 
 if __name__ == "__main__":
