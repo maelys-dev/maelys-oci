@@ -128,6 +128,8 @@ def make_fixture() -> tuple[dict[str, bytes], str, str, str, str]:
     # type, and a manifest that does not parse. A tag names no content, so the
     # key is the tag and the digest is whatever its bytes produce.
     assets["1.0"] = index
+    # A valid index other than the one a lying registry claims.
+    assets["other"] = mismatched_index
     assets["unknown-type"] = canonical({"greeting": "not a manifest"})
     assets["broken"] = canonical({
         "schemaVersion": 2,
@@ -286,6 +288,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
                         self.reply(200, data, media=media or "application/json",
                                    digest_header=self.server.index_digest)
                         return
+                    if repository == "claiming/tool":
+                        self.reply(200, data, media=media,
+                                   digest_header=digest(data))
+                        return
                     self.reply(200, data,
                                media=media or "application/json")
                     return
@@ -386,10 +392,34 @@ def main() -> int:
             assert not any("variant" in entry for entry in resolution["platforms"]), \
                 "a descriptor without a variant must still be reported"
 
-            # A digest claimed by the registry is never believed.
-            run([puller, "resolve", f"{authority}/lying/tool:broken",
-                 "--ca-file", str(ca_cert), "--docker-config", str(docker_config)],
-                env=env, expected=1)
+            # A digest claimed by the registry is never believed. The bearer
+            # token is given directly: the fixture's token endpoint serves
+            # example/tool only, and a refused token exchange would fail
+            # these resolutions before any header is read.
+            resolve_token = root / "resolve-token"
+            resolve_token.write_text(TOKEN + "\n", encoding="ascii")
+            resolve_token.chmod(0o600)
+            lied = run([puller, "resolve", f"{authority}/lying/tool:broken",
+                        "--ca-file", str(ca_cert), "--token-file", str(resolve_token)],
+                       env=env, expected=1)
+            error = json.loads(lied.stderr)["error"]
+            assert error["code"] == "PROTOCOL_FAILED", error
+            assert "digest the received bytes do not produce" in error["message"], error
+            # A tag served with a lying header for bytes that are a valid
+            # index fails on the header alone.
+            lied = run([puller, "resolve", f"{authority}/lying/tool:other",
+                        "--ca-file", str(ca_cert), "--token-file", str(resolve_token)],
+                       env=env, expected=1)
+            error = json.loads(lied.stderr)["error"]
+            assert error["code"] == "PROTOCOL_FAILED", error
+            assert "digest the received bytes do not produce" in error["message"], error
+            # The header is optional and adds nothing: the resolution above
+            # came without one, and one that agrees reports the same digest.
+            claimed = json.loads(run([
+                puller, "resolve", f"{authority}/claiming/tool:1.0",
+                "--ca-file", str(ca_cert), "--token-file", str(resolve_token),
+            ], env=env).stdout)["data"]
+            assert claimed["digest"] == resolution["digest"] == index_digest, claimed
             # Neither an index nor an image manifest.
             run([puller, "resolve", f"{authority}/example/tool:unknown-type",
                  "--ca-file", str(ca_cert), "--docker-config", str(docker_config)],

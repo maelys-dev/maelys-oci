@@ -2,7 +2,10 @@
 /* Read-only resolution of a mutable tag into the immutable digest every other
  * command requires. The registry's Docker-Content-Digest header is never
  * believed: the digest reported is the SHA-256 of the bytes received, and a
- * header that disagrees fails the resolution. Nothing is written, no store is
+ * header that disagrees fails the resolution. A header that agrees, or no
+ * header at all, proves nothing more: the peer that wrote the body wrote the
+ * header. The digest says which bytes the authenticated authority served for
+ * the tag, not that the tag is honest. Nothing is written, no store is
  * opened, no blob is fetched. */
 #include "src/puller/internal.h"
 #include "src/materializer/internal.h"
@@ -115,7 +118,9 @@ int oci_resolve_tag(const pull_options_t *options, oci_document_t **out_document
         pull_report(&http, OCI_ERROR_MEMORY, "cannot format the manifest digest");
         result = -1; goto done;
     }
-    /* The header is a claim; the bytes are the authority. */
+    /* The header is a claim; the bytes are the authority. Its absence is
+     * accepted: requiring it would refuse registries without constraining a
+     * hostile one, which can send a matching header as easily as none. */
     if (headers.content_digest &&
         strcmp(headers.content_digest, digest) != 0) {
         pull_report(&http, OCI_ERROR_PROTOCOL,
