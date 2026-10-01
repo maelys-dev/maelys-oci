@@ -306,6 +306,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
                            digest_header=requested)
                 return
             if operation == "blobs":
+                if repository == "configless/tool" and len(data) <= 1024:
+                    self.reply(404)
+                    return
                 if repository == "truncated/tool" and len(data) > 1024:
                     self.send_response(200)
                     self.send_header("Content-Length", str(len(data)))
@@ -679,8 +682,8 @@ def main() -> int:
                 error = json.loads(denied.stderr)["error"]
                 assert error["code"] == "ACCESS_DENIED", (command, error)
                 assert error["message"] == (
-                    f"token endpoint {authority} refused a pull token for "
-                    "repository denied/tool with HTTP 401; the credentials "
+                    f"token endpoint {authority} refused a token for scope "
+                    "repository:denied/tool:pull with HTTP 401; the credentials "
                     "given were refused or do not grant pull"), (command, error)
                 assert "registry credentials" in error["hint"], (command, error)
                 assert "etry" not in error["hint"], (command, error)
@@ -738,6 +741,25 @@ def main() -> int:
                     "repository, tag or digest does not exist there"), \
                     (command, error)
                 assert "reference" in error["hint"], (command, error)
+
+            # A config the registry does not have: the cause is the 404, and
+            # nothing is said about an altered config.
+            for command, extra in (
+                ("stat-remote", []),
+                ("pull", ["--store", str(root / "configless")]),
+            ):
+                configless = run([
+                    puller, command, f"{authority}/configless/tool@{index_digest}",
+                    "--platform", "linux/arm64", *extra,
+                    "--ca-file", str(ca_cert), "--token-file", str(token_file),
+                ], env=env, expected=1)
+                error = json.loads(configless.stderr)["error"]
+                assert error["code"] == "NOT_FOUND", (command, error)
+                assert error["message"].startswith(
+                    f"registry {authority} answered HTTP 404 for "
+                    "/v2/configless/tool/blobs/sha256:"), (command, error)
+                assert error["message"].endswith("does not exist there"), \
+                    (command, error)
 
             helper_config = root / "helper-config.json"
             helper_config.write_text(json.dumps({"credsStore": "desktop"}),

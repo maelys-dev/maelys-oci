@@ -508,17 +508,16 @@ int acquire_bearer_token(
         !(http->helper_credentials_present && !http->basic_authorization)) {
         if (headers.status == 401u || headers.status == 403u)
             pull_report(http, OCI_ERROR_ACCESS,
-                "token endpoint %s refused a pull token for repository %s "
-                "with HTTP %u; %s", authority, reference->repository,
+                "token endpoint %s refused a token for scope %s "
+                "with HTTP %u; %s", authority, expected_scope,
                 headers.status, http->basic_authorization ?
                 "the credentials given were refused or do not grant pull" :
                 "no credentials were given and anonymous pull is not allowed");
         else
             pull_report(http, headers.status >= 500u || headers.status == 429u ?
                 OCI_ERROR_IO : OCI_ERROR_PROTOCOL,
-                "token endpoint %s answered HTTP %u to a pull token request "
-                "for repository %s", authority, headers.status,
-                reference->repository);
+                "token endpoint %s answered HTTP %u to a token request "
+                "for scope %s", authority, headers.status, expected_scope);
     } else if (result == 0 && headers.status == 200u &&
         (!headers.content_type ||
          !oci_media_type_equal(headers.content_type, "application/json"))) {

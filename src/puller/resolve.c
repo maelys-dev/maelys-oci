@@ -22,6 +22,11 @@ static int resolve_config(
         selected->config.digest, PULL_CONFIG_MAX, &config_headers,
         &config, &config_size);
     headers_clear(&config_headers);
+    /* A fetch that named its own cause is not an altered config. */
+    if (fetched != 0 && http->error && http->error->message) {
+        free(config);
+        return -1;
+    }
     if (fetched != 0 || config_size != selected->config.size ||
         oci_config_parse(config, config_size, selected, http->error) != 0) {
         pull_report(http, OCI_ERROR_PROTOCOL,
