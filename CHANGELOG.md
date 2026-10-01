@@ -1,5 +1,27 @@
 # Changelog
 
+## Unreleased
+
+- A refused registry token exchange is now named. `resolve`, `pull` and
+  `stat-remote` reported `IO_FAILED` "the operation failed" with a retry
+  hint when the token endpoint answered 401 or 403. They now report
+  `ACCESS_DENIED` with the endpoint, the scope asked for and the status, and say
+  whether credentials were given; the credential itself never appears. On
+  these commands the `ACCESS_DENIED` hint says to check the credentials,
+  their file and the repository. A token endpoint answering 5xx or 429 stays
+  `IO_FAILED` and names the status; one answering no usable token is
+  `PROTOCOL_FAILED`. A 401 without a challenge is `ACCESS_DENIED`. `pull`
+  and `stat-remote` no longer append "does not match its descriptor" or
+  "image config is absent, altered…" to a fetch that already named its
+  cause.
+- A registry answer that is not 200 is now named. `resolve` on a tag that
+  does not exist reported `IO_FAILED` "the operation failed"; `pull` and
+  `stat-remote` on an absent digest reported `PROTOCOL_FAILED` "does not
+  match its descriptor". All three now report the status and the object
+  asked for: 404 is `NOT_FOUND`, 401 and 403 after authentication are
+  `ACCESS_DENIED`, 429 and 5xx are `IO_FAILED`, anything else is
+  `PROTOCOL_FAILED`. An empty 200 body is named too.
+
 ## 0.9.0 - 2026-10-01
 
 - **`MAELYS_OCI_ABI_COMPATIBLE_SINCE` says which consumers a revision still
@@ -40,25 +62,6 @@
 - Clarify that `resolve` lists platforms declared by direct index
   descriptors only. It reads one manifest by tag, does not traverse nested
   indexes and does not promise an exhaustive platform inventory.
-- A refused registry token exchange is now named. `resolve`, `pull` and
-  `stat-remote` reported `IO_FAILED` "the operation failed" with a retry
-  hint when the token endpoint answered 401 or 403. They now report
-  `ACCESS_DENIED` with the endpoint, the scope asked for and the status, and say
-  whether credentials were given; the credential itself never appears. On
-  these commands the `ACCESS_DENIED` hint says to check the credentials,
-  their file and the repository. A token endpoint answering 5xx or 429 stays
-  `IO_FAILED` and names the status; one answering no usable token is
-  `PROTOCOL_FAILED`. A 401 without a challenge is `ACCESS_DENIED`. `pull`
-  and `stat-remote` no longer append "does not match its descriptor" or
-  "image config is absent, altered…" to a fetch that already named its
-  cause.
-- A registry answer that is not 200 is now named. `resolve` on a tag that
-  does not exist reported `IO_FAILED` "the operation failed"; `pull` and
-  `stat-remote` on an absent digest reported `PROTOCOL_FAILED` "does not
-  match its descriptor". All three now report the status and the object
-  asked for: 404 is `NOT_FOUND`, 401 and 403 after authentication are
-  `ACCESS_DENIED`, 429 and 5xx are `IO_FAILED`, anything else is
-  `PROTOCOL_FAILED`. An empty 200 body is named too.
 - State what the digest `resolve` reports attests: the bytes the
   TLS-authenticated registry served for the tag, hashed here. A
   `Docker-Content-Digest` header that disagrees fails the resolution; one
