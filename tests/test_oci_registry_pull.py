@@ -208,8 +208,25 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if self.expire_on_next_request or parsed.path.startswith("/v2/unavailable/tool/"):
             self.close_connection = True
             return
+        # A token endpoint that redirects to another host, which refuses: the
+        # credentials stop at the first host.
+        if parsed.path == "/token-moved":
+            if self.server.cdn_authority:
+                self.reply(307, extra={
+                    "Location": f"https://{self.server.cdn_authority}{self.path}"
+                })
+            else:
+                self.reply(401)
+            return
         if parsed.path == "/token":
             query = urllib.parse.parse_qs(parsed.query, strict_parsing=True)
+            # A token endpoint that is unavailable, or answers no token.
+            if query.get("scope") == ["repository:busy/tool:pull"]:
+                self.reply(503)
+                return
+            if query.get("scope") == ["repository:tokenless/tool:pull"]:
+                self.reply(200, canonical({}), media="application/json")
+                return
             if authorization != BASIC or query != {
                     "scope": ["repository:example/tool:pull"],
                     "service": ["fixture"],
@@ -237,6 +254,16 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 return
         if parsed.path.startswith("/v2/html/tool/") and authorization == f"Bearer {TOKEN}":
             self.reply(200, b"<html>maintenance</html>", media="text/html")
+            return
+        if (parsed.path.startswith("/v2/token-moved/tool/") and
+                authorization != f"Bearer {TOKEN}"):
+            port = self.server.server_address[1]
+            self.reply(401, extra={
+                "WWW-Authenticate": (
+                    f'Bearer realm="https://localhost:{port}/token-moved",'
+                    'service="fixture",scope="repository:token-moved/tool:pull"'
+                )
+            })
             return
         if (parsed.path.startswith("/v2/foreign-realm/tool/") and
                 authorization != f"Bearer {TOKEN}"):
@@ -299,6 +326,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
                            digest_header=requested)
                 return
             if operation == "blobs":
+                if repository == "configless/tool" and len(data) <= 1024:
+                    self.reply(404)
+                    return
                 if repository == "truncated/tool" and len(data) > 1024:
                     self.send_response(200)
                     self.send_header("Content-Length", str(len(data)))
@@ -654,6 +684,132 @@ def main() -> int:
             assert mirrored["registry"] == authority, mirrored
             assert [authorization for _p, authorization, _c
                     in cdn.requests[foreign:]] == [None], cdn.requests[foreign:]
+
+            # A refused token exchange names the endpoint, the repository and
+            # the status, never the credential; it is an access failure whose
+            # hint says what to check, not a retry.
+            for command, target, extra in (
+                ("resolve", f"{authority}/denied/tool:1.0", []),
+                ("stat-remote", f"{authority}/denied/tool@{index_digest}",
+                 ["--platform", "linux/arm64"]),
+                ("pull", f"{authority}/denied/tool@{index_digest}",
+                 ["--platform", "linux/arm64", "--store", str(root / "denied")]),
+            ):
+                denied = run([
+                    puller, command, target, *extra,
+                    "--ca-file", str(ca_cert), "--docker-config", str(docker_config),
+                ], env=env, expected=1)
+                error = json.loads(denied.stderr)["error"]
+                assert error["code"] == "ACCESS_DENIED", (command, error)
+                assert error["message"] == (
+                    f"token endpoint {authority} refused a token for scope "
+                    "repository:denied/tool:pull with HTTP 401; the credentials "
+                    "given were refused or do not grant pull"), (command, error)
+                assert "registry credentials" in error["hint"], (command, error)
+                assert "etry" not in error["hint"], (command, error)
+                for secret in ("fixture:secret", BASIC, TOKEN):
+                    assert secret not in denied.stderr, (command, secret)
+
+            # The token endpoint redirects to another host, which refuses.
+            # The host that answered is named, the credentials are not said
+            # to be refused (they never left the first host), and the
+            # redirect is not presented as one of the manifest request.
+            for command, target, extra in (
+                ("resolve", f"{authority}/token-moved/tool:1.0", []),
+                ("stat-remote", f"{authority}/token-moved/tool@{index_digest}",
+                 ["--platform", "linux/arm64"]),
+                ("pull", f"{authority}/token-moved/tool@{index_digest}",
+                 ["--platform", "linux/arm64",
+                  "--store", str(root / "token-moved")]),
+            ):
+                foreign = len(cdn.requests)
+                moved = run([
+                    puller, command, target, *extra,
+                    "--ca-file", str(ca_cert), "--docker-config", str(docker_config),
+                ], env=env, expected=1)
+                error = json.loads(moved.stderr)["error"]
+                assert error["code"] == "ACCESS_DENIED", (command, error)
+                assert error["message"] == (
+                    f"token endpoint {authority} redirected to "
+                    f"{server.cdn_authority}, which answered HTTP 401 to a "
+                    "token request for scope repository:token-moved/tool:pull; "
+                    "credentials are not sent to another host"), (command, error)
+                assert [(path, authorization) for path, authorization, _c
+                        in cdn.requests[foreign:]] == [("/token-moved", None)], \
+                    (command, cdn.requests[foreign:])
+                for secret in ("fixture:secret", BASIC, TOKEN):
+                    assert secret not in moved.stderr, (command, secret)
+
+            anonymous_config = root / "anonymous-config.json"
+            anonymous_config.write_text(json.dumps({"auths": {}}), encoding="utf-8")
+            anonymous_config.chmod(0o600)
+            anonymous = run([
+                puller, "resolve", f"{authority}/example/tool:1.0",
+                "--ca-file", str(ca_cert), "--docker-config", str(anonymous_config),
+            ], env=env, expected=1)
+            error = json.loads(anonymous.stderr)["error"]
+            assert error["code"] == "ACCESS_DENIED", error
+            assert "no credentials were given" in error["message"], error
+
+            busy = run([
+                puller, "resolve", f"{authority}/busy/tool:1.0",
+                "--ca-file", str(ca_cert), "--docker-config", str(docker_config),
+            ], env=env, expected=1)
+            error = json.loads(busy.stderr)["error"]
+            assert error["code"] == "IO_FAILED", error
+            assert f"token endpoint {authority} answered HTTP 503" in error["message"], error
+
+            tokenless = run([
+                puller, "resolve", f"{authority}/tokenless/tool:1.0",
+                "--ca-file", str(ca_cert), "--docker-config", str(docker_config),
+            ], env=env, expected=1)
+            error = json.loads(tokenless.stderr)["error"]
+            assert error["code"] == "PROTOCOL_FAILED", error
+            assert "answered without one usable token" in error["message"], error
+
+            # A tag, a digest or a repository the registry does not have is
+            # NOT_FOUND and names the status and the object asked for.
+            absent_digest = "sha256:" + "0" * 64
+            for command, target, extra, path in (
+                ("resolve", f"{authority}/example/tool:absent", [],
+                 "/v2/example/tool/manifests/absent"),
+                ("stat-remote", f"{authority}/example/tool@{absent_digest}",
+                 ["--platform", "linux/arm64"],
+                 f"/v2/example/tool/manifests/{absent_digest}"),
+                ("pull", f"{authority}/example/tool@{absent_digest}",
+                 ["--platform", "linux/arm64", "--store", str(root / "absent")],
+                 f"/v2/example/tool/manifests/{absent_digest}"),
+            ):
+                absent = run([
+                    puller, command, target, *extra,
+                    "--ca-file", str(ca_cert), "--token-file", str(token_file),
+                ], env=env, expected=1)
+                error = json.loads(absent.stderr)["error"]
+                assert error["code"] == "NOT_FOUND", (command, error)
+                assert error["message"] == (
+                    f"registry {authority} answered HTTP 404 for {path}; the "
+                    "repository, tag or digest does not exist there"), \
+                    (command, error)
+                assert "reference" in error["hint"], (command, error)
+
+            # A config the registry does not have: the cause is the 404, and
+            # nothing is said about an altered config.
+            for command, extra in (
+                ("stat-remote", []),
+                ("pull", ["--store", str(root / "configless")]),
+            ):
+                configless = run([
+                    puller, command, f"{authority}/configless/tool@{index_digest}",
+                    "--platform", "linux/arm64", *extra,
+                    "--ca-file", str(ca_cert), "--token-file", str(token_file),
+                ], env=env, expected=1)
+                error = json.loads(configless.stderr)["error"]
+                assert error["code"] == "NOT_FOUND", (command, error)
+                assert error["message"].startswith(
+                    f"registry {authority} answered HTTP 404 for "
+                    "/v2/configless/tool/blobs/sha256:"), (command, error)
+                assert error["message"].endswith("does not exist there"), \
+                    (command, error)
 
             helper_config = root / "helper-config.json"
             helper_config.write_text(json.dumps({"credsStore": "desktop"}),

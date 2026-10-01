@@ -75,12 +75,17 @@ static int fail_with(
  * host that is not the registry API: the hint says what to change. */
 static int fail_registry(
     maelys_cli_context_t *context, maelys_oci_result_t result, char *error) {
-    if (result != MAELYS_OCI_ERR_PROTOCOL)
-        return fail_with(context, result, error);
-    int status = maelys_cli_fail(context, error_code(result),
-        "Name the registry API host in REFERENCE (Docker Hub is "
-        "registry-1.docker.io, not docker.io) and obtain a canonical OCI "
-        "image; the registry answer is invalid.",
+    const char *hint = NULL;
+    if (result == MAELYS_OCI_ERR_PROTOCOL)
+        hint = "Name the registry API host in REFERENCE (Docker Hub is "
+            "registry-1.docker.io, not docker.io) and obtain a canonical OCI "
+            "image; the registry answer is invalid.";
+    else if (result == MAELYS_OCI_ERR_ACCESS)
+        hint = "Check the registry credentials (--token-file or "
+            "--docker-config), the ownership and modes of that file, and "
+            "the repository named in REFERENCE.";
+    else return fail_with(context, result, error);
+    int status = maelys_cli_fail(context, error_code(result), hint,
         "%s", error ? error : "The operation failed.");
     maelys_oci_error_free(error);
     return status;
