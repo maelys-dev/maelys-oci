@@ -63,6 +63,7 @@ typedef struct pull_headers {
     char *www_authenticate;
     char *content_digest;
     int invalid;
+    int from_cache; /* read from the local CAS: no registry answered */
     struct pull_body *body;
 } pull_headers_t;
 
@@ -91,6 +92,9 @@ typedef struct pull_http {
     uint64_t network_bytes;
     size_t requests;
     int cross_authority;
+    /* Authority that answered the last exchange when a redirect left the
+     * one requested; empty otherwise. Reported, never trusted. */
+    char final_authority[254];
     const char *store;
     uint64_t downloaded_blobs;
     uint64_t cached_blobs;
@@ -161,6 +165,11 @@ maelys_http_redirect_decision_t safe_redirect(
     maelys_http_slice_t target,
     size_t index);
 int manifest_header_media_type(const char *value);
+/* Names what a manifest request received when it is not a manifest: the
+ * status or Content-Type, and the answering host when a redirect changed it.
+ * Returns 1 after reporting, 0 when the answer is a manifest or an index. */
+int manifest_answer_refused(pull_http_t *http,
+    const pull_reference_t *reference, const pull_headers_t *headers);
 int index_header_media_type(const char *value);
 unsigned char *read_private_file(
     const char *path, size_t maximum, size_t *out_size);

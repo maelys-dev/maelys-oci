@@ -71,6 +71,21 @@ static int fail_with(
     return status;
 }
 
+/* A registry answer that is no manifest is most often a reference naming a
+ * host that is not the registry API: the hint says what to change. */
+static int fail_registry(
+    maelys_cli_context_t *context, maelys_oci_result_t result, char *error) {
+    if (result != MAELYS_OCI_ERR_PROTOCOL)
+        return fail_with(context, result, error);
+    int status = maelys_cli_fail(context, error_code(result),
+        "Name the registry API host in REFERENCE (Docker Hub is "
+        "registry-1.docker.io, not docker.io) and obtain a canonical OCI "
+        "image; the registry answer is invalid.",
+        "%s", error ? error : "The operation failed.");
+    maelys_oci_error_free(error);
+    return status;
+}
+
 /* Replies with a document through the trusted writer and releases it.
  * Without --format the framework prints the same document indented: the
  * schema is the only representation, there is no prose rendering to parse. */
@@ -233,7 +248,7 @@ static int command_pull(maelys_cli_context_t *context) {
     maelys_oci_pull_options_release(&options);
     int status;
     if (pulled != MAELYS_OCI_OK) {
-        status = fail_with(context, pulled, error);
+        status = fail_registry(context, pulled, error);
     } else {
         status = maelys_cli_succeed_trusted(context,
             maelys_oci_pull_result_receipt_json(result), NULL, MAELYS_CLI_EXIT_OK);
@@ -292,7 +307,7 @@ static int command_resolve(maelys_cli_context_t *context) {
     maelys_oci_result_t result = maelys_oci_resolve(options,
         maelys_cli_operand(context, 0u), &document, &error);
     maelys_oci_pull_options_release(&options);
-    if (result != MAELYS_OCI_OK) return fail_with(context, result, error);
+    if (result != MAELYS_OCI_OK) return fail_registry(context, result, error);
     return succeed_document(context, document, MAELYS_CLI_EXIT_OK);
 }
 
@@ -322,7 +337,7 @@ static int command_stat_remote(maelys_cli_context_t *context) {
         maelys_cli_operand(context, 0u), maelys_cli_option(context, "platform"),
         &document, &error);
     maelys_oci_pull_options_release(&options);
-    if (result != MAELYS_OCI_OK) return fail_with(context, result, error);
+    if (result != MAELYS_OCI_OK) return fail_registry(context, result, error);
     return succeed_document(context, document, MAELYS_CLI_EXIT_OK);
 }
 

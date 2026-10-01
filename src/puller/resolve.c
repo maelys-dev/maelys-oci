@@ -89,8 +89,11 @@ static int resolve_node(resolution_walk_t *walk, const char *digest,
     pull_headers_t headers = {0};
     oci_descriptor_t *children = NULL;
     int result = -1;
-    if (fetch_manifest_document(walk->http, walk->reference, digest,
-            &candidate.manifest_bytes, &candidate.manifest_size, &headers) != 0 ||
+    int fetched = fetch_manifest_document(walk->http, walk->reference, digest,
+        &candidate.manifest_bytes, &candidate.manifest_size, &headers);
+    if (manifest_answer_refused(walk->http, walk->reference, &headers))
+        goto done;
+    if (fetched != 0 ||
         !headers.content_type ||
         !document_media_type_matches(candidate.manifest_bytes,
             candidate.manifest_size, headers.content_type) ||
