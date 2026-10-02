@@ -35,6 +35,12 @@ def main():
     for name in ('prefix', 'version', 'binary', 'pkgconfig', 'manifest',
                  'mbedtls-min-version', 'private-libs'):
         parser.add_argument(f'--{name}', required=True)
+    # A packager that rewrites the binary after the build, as Homebrew does when
+    # it relocates library paths and signs again, installs other bytes than
+    # those hashed here: the digest would then make the dispatcher refuse the
+    # extension, and the whole catalog with it. Such a packager omits it; the
+    # executable's owner, modes and directory are judged either way.
+    parser.add_argument('--digest', choices=('declared', 'omitted'), required=True)
     args = parser.parse_args()
     if not Path(args.prefix).is_absolute() or any(c in args.prefix for c in '\n\r\0'):
         parser.error('prefix must be an absolute, single-line path')
@@ -48,11 +54,14 @@ def main():
     manifest = json.loads((ROOT / 'cli/command.json.in').read_text())
     manifest['executable'] = str(Path(args.prefix) / 'bin/maelys-oci')
     manifest['version'] = args.version
-    with open(args.binary, 'rb') as binary:
-        digest = hashlib.sha256()
-        for block in iter(lambda: binary.read(65536), b''):
-            digest.update(block)
-    manifest['sha256'] = digest.hexdigest()
+    if args.digest == 'omitted':
+        del manifest['sha256']
+    else:
+        with open(args.binary, 'rb') as binary:
+            digest = hashlib.sha256()
+            for block in iter(lambda: binary.read(65536), b''):
+                digest.update(block)
+        manifest['sha256'] = digest.hexdigest()
     publish(args.pkgconfig, pc)
     publish(args.manifest, json.dumps(manifest, indent=2) + '\n')
 
