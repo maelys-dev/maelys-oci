@@ -441,9 +441,13 @@ $(OCI_BIN): $(CLI_OBJECTS) $(OCI_LIB) $(MAELYS_CLI_LIB) \
 # The extension manifest binds the installed executable by absolute path and
 # digest. Render on every invocation: PREFIX and linker flags can change
 # without any source timestamp changing. Identical bytes keep their mtime.
+# MANIFEST_DIGEST=omitted is for a packager that rewrites the binary after
+# this build: the bytes it installs are not those hashed here.
+MANIFEST_DIGEST ?= declared
 .PHONY: install-metadata
 install-metadata: $(OCI_BIN)
 	$(PYTHON) scripts/render-install-metadata.py --prefix="$(PREFIX)" \
+		--digest="$(MANIFEST_DIGEST)" \
 		--version="$(VERSION)" --binary="$(OCI_BIN)" --pkgconfig="$(PC)" \
 		--manifest="$(MANIFEST)" --mbedtls-min-version="$(MBEDTLS_MIN_VERSION)" \
 		--private-libs="$(PLATFORM_PRIVATE_LIBS)"

@@ -56,9 +56,21 @@ def main():
                 invoke('all', f'PREFIX={prefix}')
                 assert [p.stat().st_mtime_ns for p in (pc, manifest)] == mtimes
                 assert binary.stat().st_mtime_ns == binary_mtime, 'unchanged binary was relinked'
+            # A packager that rewrites the binary afterwards declares no digest:
+            # the manifest then carries no member a relocation could falsify.
+            invoke('install-command', 'PREFIX=/opt/relocating-packager',
+                   'MANIFEST_DIGEST=omitted', f'DESTDIR={temporary}')
+            stage = Path(temporary) / 'opt/relocating-packager'
+            data = json.loads((stage / 'share/maelys/commands/oci.json').read_text())
+            assert 'sha256' not in data, data
+            assert data['executable'] == '/opt/relocating-packager/bin/maelys-oci'
+            assert set(data) == {'schema', 'command', 'executable', 'cliApi', 'version', 'summary'}
+            refused = subprocess.run([*make, 'install-metadata', 'MANIFEST_DIGEST=later'],
+                                     cwd=ROOT, env=env, capture_output=True, text=True)
+            assert refused.returncode != 0 and 'invalid choice' in refused.stderr, refused.stderr
     finally:
         invoke('install-metadata', f'PREFIX={original_prefix}')
-    print('PASS installation, changed prefix, digest binding, modes and incremental build')
+    print('PASS installation, changed prefix, digest binding or omission, modes and incremental build')
 
 
 if __name__ == '__main__':

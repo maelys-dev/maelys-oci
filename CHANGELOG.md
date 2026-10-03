@@ -2,6 +2,25 @@
 
 ## Unreleased
 
+- **A maelys-oci installed by Homebrew is accepted by the `maelys`
+  dispatcher.** The extension manifest declared the SHA-256 of the binary as
+  the build produced it. Homebrew rewrites the library paths of that binary
+  and signs it again, when it bottles and when it pours, so the installed
+  bytes were not those the manifest named, and the dispatcher answered
+  `ACCESS_DENIED` for every command of its catalog, this one and the others.
+  Measured on an installed 0.6.6 and in the published 0.9.0 bottle, whose
+  manifest and binary disagree. The formula now builds with
+  `MANIFEST_DIGEST=omitted` and the manifest declares no digest there: the
+  dispatcher judges the executable's owner, modes and directory either way,
+  and under Homebrew the manifest and the binary belong to the same owner
+  in the same cellar, so a digest recomputed on the machine would have
+  attested nothing. `make install` keeps declaring it. `maelys-oci` run by
+  its own name was never affected. A published bottle cannot be corrected:
+  the remedy reaches a machine with the next release.
+- The formula's test now checks what the dispatcher judges: the executable
+  the manifest names, and a digest that is absent or that of the binary as
+  installed. Run against a relocated binary, it fails with the digest
+  declared and passes without.
 - Pin maelys-cli v0.5.31 (from v0.5.30). Its dispatcher reads an extension
   manifest with the directory it resolves to judged, instead of refusing a
   symbolic link, so a manifest that a package manager links into its prefix
