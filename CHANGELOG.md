@@ -1,7 +1,11 @@
 # Changelog
 
-## Unreleased
+## 0.9.1 - 2026-10-03
 
+- Adopt maelys-release v0.62.3 (from v0.62.2). Its bottle job now pours the
+  bottle a release has just attached and runs the formula's test on it, so a
+  formula whose test fails is kept out of the tap. This release is the first
+  to cross it with a bottle that Homebrew relocates.
 - **A maelys-oci installed by Homebrew is accepted by the `maelys`
   dispatcher.** The extension manifest declared the SHA-256 of the binary as
   the build produced it. Homebrew rewrites the library paths of that binary
