@@ -1,5 +1,25 @@
 # Changelog
 
+## Unreleased
+
+- **The shell completions complete.** Pin maelys-cli v0.5.34 (from v0.5.31),
+  whose generator wrote scripts that did not work, and every product built
+  on it installed them. Under bash 3.2, which is `/bin/bash` on macOS, the
+  words typed were merged into one: `maelys-oci stat-remote --pl` offered
+  nothing and `pull --platform` offered files. Under zsh the script failed
+  on its first line of work (`unrecognized modifier 'C'`) and offered files
+  only, for every word. Measured on the installed 0.9.1, then on this
+  build: bash 3.2 and zsh 5.9 now offer the commands, `--platform` and its
+  two choices, and fall back to files for a path operand. fish gains the
+  same fallback; it was not measured here. Nothing changes in the catalog.
+  A script already installed is a copy of the old text: a package rewrites
+  it at its next build, and whoever wrote `maelys-oci completion SHELL` into
+  a file runs it again.
+- With that pin, `__complete` returns nothing after an operand declared
+  without a kind, where it returned `true` and `false`, and a command this
+  build cannot run is no longer offered after `help` or `describe`. The
+  agent instructions and the guide are regenerated from the pinned commit.
+
 ## 0.9.1 - 2026-10-03
 
 - Adopt maelys-release v0.62.3 (from v0.62.2). Its bottle job now pours the
