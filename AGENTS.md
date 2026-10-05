@@ -49,7 +49,7 @@ License: https://creativecommons.org/licenses/by/4.0/
 When sharing adaptations, retain attribution and indicate your changes.
 -->
 
-# Maelys CLI framework (maelys-cli 0.5.31, ce4f0cb)
+# Maelys CLI framework (maelys-cli 0.5.34, 88a4aba)
 
 This project builds its command-line interface on `libmaelys_cli`. The
 complete guide is in `docs/maelys-cli-guide.md`; this block is the summary
