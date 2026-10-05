@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.9.2 - 2026-10-05
 
 - **The shell completions complete.** Pin maelys-cli v0.5.34 (from v0.5.31),
   whose generator wrote scripts that did not work, and every product built
