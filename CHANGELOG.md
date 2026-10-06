@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+- Pin maelys-http v0.1.15 (from v0.1.14), still ABI 1 on its four
+  interfaces, with no change to the codec or the client. It moves its own
+  maelys-system from v0.9.1 to v0.11.0, the commit this product already
+  pins: the two libraries are now built and tested against the same
+  maelys-system, which v0.1.14 was not. The Homebrew formulas depend on the
+  tap's libmaelys-http without a version, so a bottle was already built
+  against whatever the tap served while the checks built against the pin;
+  the pin now names the version the tap serves. The Mbed TLS floor read
+  from maelys-http stays 3.6.7.
+
 ## 0.9.2 - 2026-10-05
 
 - **The shell completions complete.** Pin maelys-cli v0.5.34 (from v0.5.31),
