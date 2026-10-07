@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.9.3 - 2026-10-07
 
 - Pin maelys-cli v0.5.36 (from v0.5.34), which pins agent-cli-spec v2.9.0.
   One change is visible here: `list --format jsonl` writes its lines when
