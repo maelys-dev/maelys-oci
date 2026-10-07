@@ -1,7 +1,22 @@
 # Changelog
 
-## Unreleased
+## 0.9.3 - 2026-10-07
 
+- Pin maelys-cli v0.5.36 (from v0.5.34), which pins agent-cli-spec v2.9.0.
+  One change is visible here: `list --format jsonl` writes its lines when
+  the command succeeds, no longer as each record arrives, so a failure
+  midway leaves stdout empty instead of partial lines. `--field` on a
+  command that may write must name a member the output schema requires, and
+  is refused before execution; `import`, `pull`, `gc`, `remove` and
+  `unpack-rootfs` each declare theirs. `MAELYS_CLI_FORMAT` is the default
+  format, which only `--format` and `--json` replace: with it set to `json`,
+  `--compact` now answers compact JSON where it answered text. The agent
+  instructions and the guide are regenerated from the pinned commit.
+- Pin maelys-system v0.12.2 (from v0.11.0), still ABI 1. It adds directory
+  watching, which this product does not call, and corrects two faults a
+  review found in the descriptor passing of 0.11.0. maelys-http v0.1.15 is
+  built against v0.11.0: the checks link it with this newer maelys-system
+  until maelys-http follows.
 - Pin maelys-http v0.1.15 (from v0.1.14), still ABI 1 on its four
   interfaces, with no change to the codec or the client. It moves its own
   maelys-system from v0.9.1 to v0.11.0, the commit this product already
