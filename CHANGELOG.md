@@ -1,7 +1,11 @@
 # Changelog
 
-## Unreleased
+## 0.9.4 - 2026-10-08
 
+- Adopt maelys-release v0.63.0 (from v0.62.3). One managed file moves:
+  `scripts/checkout-dependencies.sh` gains the loop that reports how long
+  each dependency took to clone and skips one declared `on-request`, which
+  this product declares nowhere, so it clones what it cloned.
 - **`help` is rewritten.** Pin maelys-cli v0.6.0 (from v0.5.36), which pins
   agent-cli-spec v2.12.0. The general help fits eighty columns and names
   each command by its pattern and purpose instead of repeating every usage;

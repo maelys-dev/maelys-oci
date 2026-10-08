@@ -27,6 +27,16 @@
 # Every pin, never a list of names: the jobs of maelys-egress named three
 # dependencies in five places each, and a fourth pin would have been the one
 # forgotten in one of them.
+#
+# Every pin but one kind: a pin whose file says 'on-request' is skipped here
+# and cloned only when a job asks for it by name, through
+# scripts/checkout-dependency.sh NAME. maelys-http pins Mbed TLS twice, and
+# its second pin serves one job; every other job cloned it, submodules and
+# all, without reading a file of it. The exception is declared in the pin,
+# which is still the one place a dependency is named.
+#
+# And each clone says how long it took, on stderr: that cost was invisible,
+# and a product had to compare two runs to see forty seconds a job.
 set -eu
 destination=${1:?usage: scripts/checkout-dependencies.sh DESTINATION}
 root=$(CDPATH='' cd -- "$(dirname "$0")/.." && pwd)
@@ -40,7 +50,13 @@ for pin_file in "$root"/dependencies/*.pin; do
     name=${name%.pin}
     # Reported on stderr with the clones themselves: stdout carries the one
     # assignment, and a second line there would land in $GITHUB_ENV.
+    if sed -n '3,$p' "$pin_file" | grep -q '^on-request$'; then
+        echo "checkout-dependencies: $name is cloned on request only (dependencies/$name.pin): skipped" >&2
+        continue
+    fi
+    started=$(date +%s)
     sh "$root/scripts/checkout-dependency.sh" "$name" "$destination/$name" >&2
+    echo "checkout-dependencies: $name cloned in $(($(date +%s) - started))s" >&2
 done
 # The socle is the last dependency that was still read beside the product.
 # It is not a dependencies/*.pin -- its commit is the one on the `uses:` line
