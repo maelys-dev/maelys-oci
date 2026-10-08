@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.9.4 - 2026-10-08
+
+- Adopt maelys-release v0.63.0 (from v0.62.3). One managed file moves:
+  `scripts/checkout-dependencies.sh` gains the loop that reports how long
+  each dependency took to clone and skips one declared `on-request`, which
+  this product declares nowhere, so it clones what it cloned.
+- **`help` is rewritten.** Pin maelys-cli v0.6.0 (from v0.5.36), which pins
+  agent-cli-spec v2.12.0. The general help fits eighty columns and names
+  each command by its pattern and purpose instead of repeating every usage;
+  the usage of one command is under `maelys-oci help COMMAND_ID`, the
+  commands of a family under `maelys-oci help FAMILY`, and the options every
+  command takes under `maelys-oci help conventions`.
+- **`COMMAND --help --format json` answers as `help`.** Its envelope carries
+  `"command": "help"` where it carried the identifier of the command, which
+  is now in `data.commands`. A consumer that compared that member reads
+  `data.commands`.
+- `--expect` is reserved by the framework on a transaction, for binding an
+  application to the plan that was read. `--expect-root` on `import` and
+  `pull` is another option and is untouched. This product declares neither
+  that binding nor catalog examples, both of which 0.6.0 makes available.
+- `docs/cli-contract.json` changes by the summary of the operand of `help`.
+  The agent instructions and the guide are regenerated from the pinned
+  commit.
+
 ## 0.9.3 - 2026-10-07
 
 - Pin maelys-cli v0.5.36 (from v0.5.34), which pins agent-cli-spec v2.9.0.

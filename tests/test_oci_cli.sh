@@ -51,7 +51,13 @@ run describe-pull "$oci" describe pull --json --compact
 check "pull constrains --platform to a choice and declares the token/config conflict" 'json_data "$work/out" "[o for o in data[\"commands\"][0][\"input\"][\"options\"] if o[\"long\"] == \"--platform\"][0][\"argument\"][\"choices\"]" | grep -q "linux/arm64.*linux/amd64" && json_data "$work/out" "[o for o in data[\"commands\"][0][\"input\"][\"options\"] if o[\"long\"] == \"--token-file\"][0][\"conflictsWith\"]" | grep -q "docker-config"'
 
 run help "$oci" help
-check "help is generated from the catalog" '[ "$code" = 0 ] && printf "%s" "$out" | grep -q "import SOURCE \[--store DIRECTORY\]" && printf "%s" "$out" | grep -q "STORE"'
+check "help names every command by its pattern and purpose" '[ "$code" = 0 ] && printf "%s" "$out" | grep -q "Materialize one manifest of an OCI layout" && printf "%s" "$out" | grep -q "help COMMAND_ID" && ! printf "%s" "$out" | grep -q "\[--store DIRECTORY\]"'
+
+run help-import "$oci" help import
+check "help of one command is generated from the catalog" '[ "$code" = 0 ] && printf "%s" "$out" | grep -q "import SOURCE \[--store DIRECTORY\]" && printf "%s" "$out" | grep -q "MAELYS_OCI_STORE"'
+
+run help-flag "$oci" import --help --json --compact
+check "COMMAND --help answers as help and names the command asked" '[ "$code" = 0 ] && [ "$(python3 -c "import json,sys; d=json.load(open(sys.argv[1])); print(d[\"command\"], d[\"data\"][\"commands\"])" "$work/out")" = "help ['"'"'import'"'"']" ]'
 
 run unknown "$oci" inspect "$work" --loud --json --compact
 check "unknown option is refused with an envelope on stderr" '[ "$code" = 1 ] && [ -z "$out" ] && printf "%s" "$err" | grep -q "\"code\":\"VALIDATION_FAILED\""'
