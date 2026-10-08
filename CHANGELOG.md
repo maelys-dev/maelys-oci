@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.9.5 - 2026-10-08
+
+- Pin maelys-cli v0.6.1 (from v0.6.0), still ABI 1. It wraps a product's
+  `agent_guidance` to the width of the help, where 0.6.0 printed it as
+  written. The guidance of this product already fitted eighty columns, so
+  nothing a user sees changes. The agent instructions and the guide are
+  regenerated from the pinned commit.
+- Adopt maelys-release v0.63.1 (from v0.63.0). It asks nothing of a product
+  and moves no managed file: only the socle pin of the two workflows
+  changes.
+
 ## 0.9.4 - 2026-10-08
 
 - Adopt maelys-release v0.63.0 (from v0.62.3). One managed file moves:
