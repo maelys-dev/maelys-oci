@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.9.6 - 2026-10-08
+
+- **Pin maelys-json v0.3.0 (from v0.2.0), whose interface is at ABI 3.** The
+  Makefile requires the exact ABI of the maelys-json it builds against, and
+  required 2: the tap's `libmaelys-json` being at 0.3.0, a build of any
+  earlier version of this product from source through Homebrew is refused,
+  and so would have been the bottles of a new release. Bottles already
+  published are unaffected. 0.3.0 adds a writer of a number from its lexeme
+  and lets `maelys_json_writer_value` copy a number that is not an integer
+  instead of refusing it. This product calls neither: it writes its integers
+  itself, and what it reads through the integer accessors is unchanged.
+- Pin maelys-cli v0.6.2 (from v0.6.1), still ABI 1: `help COMMAND_ID` keeps
+  a declared example on one line whatever the width. This product declares
+  no example. The agent instructions and the guide are regenerated from the
+  pinned commit.
+- Pin maelys-system v0.12.3 (from v0.12.2), still ABI 1: a due timer no
+  longer keeps descriptors waiting in a step of its loop, which this
+  product does not run.
+
 ## 0.9.5 - 2026-10-08
 
 - Pin maelys-cli v0.6.1 (from v0.6.0), still ABI 1. It wraps a product's

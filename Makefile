@@ -47,7 +47,7 @@ MAELYS_DEPENDENCIES_DIR ?=
 # checkout must be the pinned commit and carry that ABI. maelys-cli is always
 # built from its checkout: the framework is linked into the terminal.
 MAELYS_SYSTEM_ABI := 1u
-MAELYS_JSON_ABI := 2u
+MAELYS_JSON_ABI := 3u
 MAELYS_HTTP_ABI := 1u
 MAELYS_SYSTEM_VERSION := $(patsubst v%,%,$(shell sed -n '1p' dependencies/maelys-system.pin))
 MAELYS_JSON_VERSION := $(patsubst v%,%,$(shell sed -n '1p' dependencies/maelys-json.pin))
