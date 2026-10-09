@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.9.7 - 2026-10-09
 
 - Pin maelys-cli v0.6.4 (from v0.6.2), still ABI 1. Nothing a user of this
   product sees changes: 0.6.3 moves the framework's own maelys-json to
