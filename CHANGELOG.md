@@ -9,6 +9,11 @@
   agent instructions and the guide are regenerated from the pinned commit,
   through `maelys agents install --apply --expect FINGERPRINT`, which 0.6.4
   provides: the plan that was read is the one that was written.
+- Pin maelys-system v0.13.0 (from v0.12.3), still ABI 1. It adds the
+  starting of a process and corrects a datagram receive on a Unix socket;
+  this product calls neither. maelys-http v0.1.15 is built against v0.11.0:
+  the checks link it with this newer maelys-system until maelys-http
+  follows.
 
 ## 0.9.6 - 2026-10-08
 
