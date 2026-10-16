@@ -62,6 +62,12 @@ check "COMMAND --help answers as help and names the command asked" '[ "$code" = 
 run unknown "$oci" inspect "$work" --loud --json --compact
 check "unknown option is refused with an envelope on stderr" '[ "$code" = 1 ] && [ -z "$out" ] && printf "%s" "$err" | grep -q "\"code\":\"VALIDATION_FAILED\""'
 
+run dash-word "$oci" inspect -layout --json --compact
+check "a word starting with one dash is refused as an option, before any source is read" '[ "$code" = 1 ] && [ -z "$out" ] && printf "%s" "$err" | grep -q "\"code\":\"VALIDATION_FAILED\"" && ! printf "%s" "$err" | grep -q "NOT_FOUND"'
+
+run dash-operand "$oci" inspect --json --compact -- -layout
+check "the same word after -- is a source again" '[ "$code" = 1 ] && [ -z "$out" ] && printf "%s" "$err" | grep -q "\"code\":\"NOT_FOUND\""'
+
 run dry-run "$oci" gc --dry-run
 check "legacy --dry-run is refused with the migration hint" '[ "$code" = 1 ] && printf "%s" "$err" | grep -q "Add --apply only after reviewing"'
 
