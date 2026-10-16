@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.9.8 - 2026-10-16
 
 - **Lines that were accepted are refused.** Pin maelys-cli v0.7.0 (from
   v0.6.4), still ABI 1, whose parser refuses what 0.6.x read otherwise:
