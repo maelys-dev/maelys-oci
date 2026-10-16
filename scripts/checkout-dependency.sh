@@ -5,15 +5,25 @@
 # usage: scripts/checkout-dependency.sh NAME [DESTINATION]
 #
 # Clones the repository NAME next to this one at the commit on line 2 of
-# dependencies/NAME.pin; line 1 holds the nearest tag for humans. The release
-# socle runs it before packaging, the product's CI before `make check`, a
-# developer once by hand. It refuses to replace an existing DESTINATION.
+# dependencies/NAME.pin. Line 1 is for humans, and this script only prints
+# it: the tag that commit carries -- or, for a commit that carries none,
+# what `git describe --tags` says of it, or under an `unreleased` line the
+# last tag before it. `maelys-release dependencies` holds line 1 to line 2.
+# The release socle runs this before packaging, the product's CI before
+# `make check`, a developer once by hand. It refuses to replace an existing
+# DESTINATION.
 #
 # A Maelys repository needs nothing more: MAELYS_GIT_BASE (default
 # https://github.com/maelys-dev) prefixes the clone URL. A dependency that
 # lives elsewhere declares where, on a line `repository <https URL>` of its
 # pin: a product that must build a third-party library from a pinned commit
 # says so once, in the same file as every other pin.
+#
+# A third party's commit that no tag carries says so, on a line `unreleased
+# <branch>`: it is on that branch, on purpose. It is cloned here like any
+# other commit, and nothing here reads the branch: `maelys-release
+# dependencies DIR --apply` asks that repository whether the branch still
+# holds the commit, and refuses the day it does not.
 #
 # A dependency whose build needs its submodules adds a line `submodules`, or
 # `submodules recursive`. It is declared and not automatic: a submodule's
@@ -39,6 +49,28 @@ test -f "$pin_file" || { echo "checkout-dependency: no pin for $name: $pin_file"
 tag=$(sed -n '1p' "$pin_file")
 pin=$(sed -n '2p' "$pin_file")
 printf '%s' "$pin" | grep -Eq '^[0-9a-f]{40}$' || { echo "checkout-dependency: line 2 of $pin_file must be the pinned commit" >&2; exit 65; }
+# A line that means a repository and is not one the reader below matches --
+# a space after the URL, a space or a tab before the word, another case, no
+# URL -- was no line at all, and the clone then came from the organisation:
+# another repository than the one the file names. It is refused, with its
+# line, and so is a second repository line, since only the first is read.
+# Nothing else is refused here: what this script does not read, it ignores.
+unread=$(awk 'NR > 2 && tolower($0) ~ /^[ \t]*repository/ {
+    seen += 1
+    if ($0 !~ /^repository  *https:\/\/[^ ]*$/) { print NR " unread"; exit }
+    if (seen > 1) { print NR " second"; exit }
+}' "$pin_file")
+case $unread in
+    *' unread')
+        echo "checkout-dependency: $pin_file line ${unread%% *} starts like a repository line and is not one:" \
+             "'repository <https URL>' from the first column, with nothing after the URL. Nothing is cloned:" \
+             "the organisation's repository of that name is not the one this file means" >&2
+        exit 65 ;;
+    *' second')
+        echo "checkout-dependency: $pin_file line ${unread%% *} is a second repository line, and one is read." \
+             "Nothing is cloned" >&2
+        exit 65 ;;
+esac
 repository=$(sed -n 's|^repository  *\(https://[^ ]*\)$|\1|p' "$pin_file" | head -n 1)
 if [ -z "$repository" ]; then
     repository="${MAELYS_GIT_BASE:-https://github.com/maelys-dev}/$name.git"

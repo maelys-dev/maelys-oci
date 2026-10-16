@@ -65,12 +65,42 @@ done
 # it from ../maelys-release, a working copy that moves as much as any other.
 # CI already clones it at that commit; this gives the same root to a machine,
 # so the two agree instead of differing in the one place nobody looks.
-socle_sha=$(sed -n 's|.*maelys-release/.github/workflows/release\.yml@\([0-9a-f]\{40\}\).*|\1|p' \
+socle_pin=$(sed -n 's|.*maelys-release/.github/workflows/release\.yml@\([0-9a-f]\{40\}\)\(.*\)|\1\2|p' \
     "$root/.github/workflows/release.yml" 2>/dev/null | head -n 1)
-if [ -z "$socle_sha" ]; then
-    socle_sha=$(sed -n 's|.*maelys-release/.github/workflows/check-product\.yml@\([0-9a-f]\{40\}\).*|\1|p' \
+if [ -z "$socle_pin" ]; then
+    socle_pin=$(sed -n 's|.*maelys-release/.github/workflows/check-product\.yml@\([0-9a-f]\{40\}\)\(.*\)|\1\2|p' \
         "$root"/.github/workflows/*.yml 2>/dev/null | head -n 1)
 fi
+socle_sha=$(printf '%s\n' "$socle_pin" | cut -c 1-40)
+# The same line names the tag, in its trailing comment: `@<commit> # vX.Y.Z`.
+# A fetch by commit brings no tag, so the checkout did not know which version
+# it was: `cut` run from it said "socle untagged" every time, and `adopt`
+# refused it without --allow-untagged. The tag is brought by that name, as a
+# label and nothing more:
+#
+#   - the commit on the line decides what is checked out, alone and first;
+#   - a comment that is not a release tag -- `# untagged`, which a candidate
+#     under trial writes, or no comment at all -- asks the remote nothing;
+#   - the remote is asked what the tag names before anything of it is
+#     fetched, and a tag that names another commit is not fetched at all;
+#   - the tag is created here only when what was fetched resolves, peeled,
+#     to that commit AND, for a tag object, calls itself by the name asked
+#     for. `git describe` answers with the name inside the object, not with
+#     the name of the ref: a remote serving refs/tags/v1.2.3 as an object
+#     named v9.0.0 would make this checkout say it is v9.0.0;
+#   - whatever is declined is said on stderr, and fails nothing.
+#
+# The two calls that ask for the tag give up on a remote that accepts and
+# then says nothing, through git's own low-speed settings: measured, such a
+# call is cut after the time below with "Operation too slow". They bound an
+# http(s) transfer, which is what the fleet's base is. The fetch by commit
+# further down is NOT bounded that way, and neither is a clone of a pin: a
+# remote that hangs there holds the job, as it did before this.
+socle_tag=$(printf '%s\n' "$socle_pin" \
+    | sed -n 's|^[0-9a-f]\{40\} # \(v[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\)[[:space:]]*$|\1|p')
+socle_git() {
+    git -C "$destination/maelys-release" -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=10 "$@"
+}
 # Attempted, never required. The pins are what a build needs; the socle root
 # is what a conformance target reads, and a machine that cannot reach the
 # socle must still be able to build. A failure says so on stderr and leaves
@@ -81,7 +111,53 @@ if [ -n "$socle_sha" ] && [ ! -e "$destination/maelys-release" ]; then
         && git -C "$destination/maelys-release" fetch --quiet --depth 1 \
             "$base/maelys-release.git" "$socle_sha" >&2 \
         && git -C "$destination/maelys-release" checkout --quiet --detach FETCH_HEAD >&2; then
-        :
+        if [ -n "$socle_tag" ]; then
+            if socle_listed=$(socle_git ls-remote "$base/maelys-release.git" \
+                    "refs/tags/$socle_tag" "refs/tags/$socle_tag^{}"); then
+                # By the whole name of the ref: the pattern of ls-remote also
+                # matches a branch that ends like it.
+                socle_tagged=$(printf '%s\n' "$socle_listed" | awk -v ref="refs/tags/$socle_tag" '
+                    $2 == ref "^{}" { peeled = $1 }
+                    $2 == ref { direct = $1 }
+                    END { print (peeled != "" ? peeled : direct) }')
+                if [ -z "$socle_tagged" ]; then
+                    echo "checkout-dependencies: $base has no tag $socle_tag;" \
+                         "the socle at $socle_sha is checked out without it" >&2
+                elif [ "$socle_tagged" != "$socle_sha" ]; then
+                    echo "checkout-dependencies: $base says $socle_tag is $socle_tagged" \
+                         "and the uses: line pins $socle_sha: the tag is not fetched and not created," \
+                         "and the socle is checked out at the commit of the line" >&2
+                elif ! socle_git fetch --quiet --depth 1 \
+                        "$base/maelys-release.git" "refs/tags/$socle_tag" >&2; then
+                    echo "checkout-dependencies: the tag $socle_tag could not be fetched from $base;" \
+                         "the socle at $socle_sha is checked out without it" >&2
+                else
+                    # What was fetched is judged, not what was announced.
+                    socle_object=$(socle_git rev-parse --verify --quiet FETCH_HEAD 2>/dev/null || true)
+                    socle_tagged=$(socle_git rev-parse --verify --quiet 'FETCH_HEAD^{commit}' 2>/dev/null || true)
+                    socle_inner=$socle_tag
+                    if [ "$(socle_git cat-file -t "${socle_object:-FETCH_HEAD}" 2>/dev/null || true)" = tag ]; then
+                        socle_inner=$(socle_git cat-file tag "$socle_object" 2>/dev/null | sed -n '/^$/q;s/^tag //p')
+                    fi
+                    if [ -z "$socle_object" ] || [ "$socle_tagged" != "$socle_sha" ]; then
+                        echo "checkout-dependencies: what $base served as $socle_tag is ${socle_tagged:-no commit}" \
+                             "and the uses: line pins $socle_sha: the tag is not created," \
+                             "and the socle is checked out at the commit of the line" >&2
+                    elif [ "$socle_inner" != "$socle_tag" ]; then
+                        echo "checkout-dependencies: the tag object $base serves as $socle_tag calls itself" \
+                             "'$(printf '%s' "$socle_inner" | tr -cd 'A-Za-z0-9._/-' | cut -c 1-64)':" \
+                             "this checkout would describe itself by that name, so the tag is not created," \
+                             "and the socle is checked out at the commit of the line" >&2
+                    elif ! socle_git update-ref "refs/tags/$socle_tag" "$socle_object" >&2; then
+                        echo "checkout-dependencies: the tag $socle_tag could not be written;" \
+                             "the socle at $socle_sha is checked out without it" >&2
+                    fi
+                fi
+            else
+                echo "checkout-dependencies: $base could not be asked for the tag $socle_tag;" \
+                     "the socle at $socle_sha is checked out without it" >&2
+            fi
+        fi
     else
         echo "checkout-dependencies: the socle at $socle_sha could not be fetched from $base;" \
              "MAELYS_RELEASE_DIR is not set" >&2

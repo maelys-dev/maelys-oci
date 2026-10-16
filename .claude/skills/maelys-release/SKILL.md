@@ -18,11 +18,15 @@ there is normative).
 
 ## Cut a release
 
-1. On `main`, up to date with `origin/main`: date the `CHANGELOG.md` entry
-   `## X.Y.Z — YYYY-MM-DD` (`check` reports a `VERSION` without one),
-   regenerate any generated documentation, and commit everything else.
-   `VERSION` is written by `cut`, whose commit carries the bump and
-   nothing else.
+1. On `main`, up to date with `origin/main`: title the `CHANGELOG.md` entry
+   `## X.Y.Z — YYYY-MM-DD` with the date of the day, never a later one
+   (`check` notes a title `cut` will not read; `cut` refuses it, and a
+   date in the future), regenerate any generated documentation, and
+   commit everything else. Until that day the changes sit under
+   `## Unreleased`. `VERSION` is written by `cut`, whose commit carries
+   the bump and nothing else: until then it says what was published
+   last, `0.0.0` before a first release, and a `VERSION` moved by hand
+   to the version to cut is refused as not coming after itself.
 2. Run `bin/maelys-release cut . X.Y.Z --apply` from a maelys-release
    checkout at the version you want cutting it: `cut` runs as that
    checkout, not as the socle this repository pins, and its first line
@@ -31,8 +35,16 @@ there is normative).
    tag, existing `vX.Y.Z`, `release` environment not limited to tags
    `v*`) before writing anything, then commits `VERSION` signed on
    `release/vX.Y.Z`, opens the pull request and waits for the checks of
-   that commit to exist and to finish. Without `--apply` it reports the
-   gate and writes nothing.
+   that commit to exist and to finish. Without `--apply` it reads the
+   release as `cut` will and changes no file of the product and nothing
+   on GitHub — it fetches, so it needs `gh`, the network and a `main`
+   level with `origin`. Run it that way first. What it says of the
+   version, the entry and the worktree is about what was prepared: fix
+   that. Its lines on `tag.gpgsign`, `user.signingkey` and the signing
+   key are the signer's own, and exit 2 on those alone is expected of
+   anyone else: leave them, and never configure a key to turn them
+   green. The verify command, `[cut] after-version`, GitHub's verdict on
+   the release commit and the checks run under `--apply` only.
 3. Merge that pull request under this repository's own rules. `cut` never
    merges its own: a command that did would work only where the default
    branch is unprotected.
@@ -67,9 +79,13 @@ the first Linux build of the product.
   command answers `--format json` with an agent-cli/v2 envelope,
   `describe --format json` returns the catalog, and `--field NAME` reads one
   member of the result without a `jq` expression.
-- `dependencies/<name>.pin`: nearest tag on line 1, pinned commit on line 2.
-  `scripts/checkout-dependency.sh NAME` clones the dependency at that
-  commit; write no other checkout script.
+- `dependencies/<name>.pin`: pinned commit on line 2, and on line 1 the tag
+  that commit carries — never the nearest tag of a commit that carries
+  none, which `maelys-release dependencies` refuses. A Maelys repository is
+  pinned on a tag. A third party's commit that no tag carries yet adds
+  `repository <https URL>` and `unreleased <branch>`, with the last tag
+  before it on line 1. `scripts/checkout-dependency.sh NAME` clones the
+  dependency at that commit; write no other checkout script.
 - `dependencies/packages`: the apt (`[linux]`) and brew (`[macos]`) packages the
   build needs, one per line. Nothing else installs packages in a release
   or in CI: `.github/workflows/ci.yml` calls the socle's

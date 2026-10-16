@@ -49,7 +49,7 @@ License: https://creativecommons.org/licenses/by/4.0/
 When sharing adaptations, retain attribution and indicate your changes.
 -->
 
-# Maelys CLI framework (maelys-cli 0.6.4, 04a312e)
+# Maelys CLI framework (maelys-cli 0.7.0, 7a8c6f6)
 
 This project builds its command-line interface on `libmaelys_cli`. The
 complete guide is in `docs/maelys-cli-guide.md`; this block is the summary
@@ -183,7 +183,12 @@ when it has what they name.
   repository pins; `cut`, `adopt`, `protect` and `dependencies` run as the
   checkout at hand, and `cut` says which. The command follows agent-cli/v2:
   `--format json` everywhere, `describe` for the catalog, and `--field NAME`
-  to read one member of the result without a `jq` expression.
+  to read one member of the result without a `jq` expression. On a terminal
+  its text is paged, the account of an `--apply` included, once the write
+  is done. An account that fits the screen returns by itself; a longer
+  one, or a host that presets `PAGER` or `LESS`, can stop on `:` with the
+  command finished and looking hung: through `ssh -t`, pass `--pager
+  never`.
 - A release is a signed, annotated tag `vX.Y.Z` on `main` whose commit
   carries `VERSION` = `X.Y.Z` and a dated `CHANGELOG.md` entry. Never push a
   tag before `make check` passes on that exact commit, never move or force a
@@ -193,6 +198,22 @@ when it has what they name.
   the merge, `cut DIR X.Y.Z --tag --apply` signs the tag on the merge commit
   those checks ran on. It never merges its own pull request. **An adoption
   does not have to be published**: it travels in the next release.
+- `VERSION` says what was published last — `0.0.0` before a first release
+  — until `cut` writes it: moved by hand ahead of a `cut`, it is refused as
+  not coming after itself. A release is handed over with its entry titled
+  `## X.Y.Z — YYYY-MM-DD` and dated that day, never a later one, which
+  `cut` refuses too; until then its changes sit under `## Unreleased`.
+  `check` notes an entry `cut` will not read and, on a checkout that is
+  not a job's, a `VERSION` no tag has published. `maelys-release cut DIR
+  X.Y.Z` without `--apply` reads the release as `cut` will, and changes
+  no file of the product and nothing on GitHub; it needs `gh`, the
+  network and a `main` level with `origin`. What it says of the version,
+  the entry and the worktree is about what was prepared: fix that. Its
+  lines on `tag.gpgsign`, `user.signingkey` and the signing key are the
+  signer's own, and exit 2 on those alone is expected of anyone else:
+  leave them, and never configure a key to turn them green. It does not
+  run what only `--apply` runs: the verify command, `[cut]
+  after-version`, GitHub's verdict on the commit, the checks.
 - The checks `main` requires are derived, never typed: `maelys-release
   protect DIR` computes them and `--apply` writes them, as a ruleset when a
   ruleset protects the branch. When this repository still requires the
