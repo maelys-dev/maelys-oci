@@ -21,7 +21,7 @@
               {
                 "name": "COMMAND_ID",
                 "required": false,
-                "summary": "Stable command identifier whose help is shown, the family of commands under an identifier, or `conventions`.",
+                "summary": "Stable command identifier whose help is shown, or the family of commands under an identifier.",
                 "variadic": false
               }
             ],
@@ -52,7 +52,7 @@
           "pattern": [
             "help"
           ],
-          "purpose": "Show the generated CLI guide or one command's help.",
+          "purpose": "Show the help of the program, of one command or of one family.",
           "usage": "help [COMMAND_ID] | --help"
         },
         {
@@ -109,7 +109,7 @@
           "pattern": [
             "version"
           ],
-          "purpose": "Return product identity.",
+          "purpose": "Show the product, program, version and contract.",
           "usage": "version | --version"
         },
         {
@@ -186,7 +186,7 @@
           "pattern": [
             "describe"
           ],
-          "purpose": "Return the machine-readable catalog, summary or one descriptor.",
+          "purpose": "Show the machine-readable catalog, its summary or one descriptor.",
           "usage": "describe [COMMAND_ID] [--summary] [--prefix PREFIX]"
         },
         {
@@ -718,7 +718,7 @@
                 "repeatable": false,
                 "required": false,
                 "requires": [],
-                "summary": "Apply the reviewed transaction; omission returns a read-only plan."
+                "summary": "Apply the reviewed plan; without it the command only plans."
               }
             ],
             "passthrough": false,
@@ -1844,7 +1844,7 @@
                 "repeatable": false,
                 "required": false,
                 "requires": [],
-                "summary": "Apply the reviewed transaction; omission returns a read-only plan."
+                "summary": "Apply the reviewed plan; without it the command only plans."
               }
             ],
             "passthrough": false,
@@ -2044,7 +2044,7 @@
                 "repeatable": false,
                 "required": false,
                 "requires": [],
-                "summary": "Apply the reviewed transaction; omission returns a read-only plan."
+                "summary": "Apply the reviewed plan; without it the command only plans."
               }
             ],
             "passthrough": false,
@@ -2309,7 +2309,9 @@
       },
       "product": "Maelys OCI",
       "program": "maelys-oci",
-      "schemaVersion": 1
+      "schemaVersion": 1,
+      "x-maelys-guidance": "STORE\n  The store defaults to $MAELYS_OCI_STORE, else $XDG_DATA_HOME/maelys-oci.\n  Import and pull materialize OCI layers independently of any runtime.",
+      "x-maelys-summary": "bounded OCI acquisition and immutable artifact store"
     }
   }
 }
