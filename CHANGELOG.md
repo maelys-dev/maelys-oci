@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.9.10 - 2026-10-24
 
 - Pin maelys-http v0.1.17 (from v0.1.16) and maelys-system v0.14.3 (from
   v0.13.0) together, both still ABI 1. maelys-http changes neither its codec
