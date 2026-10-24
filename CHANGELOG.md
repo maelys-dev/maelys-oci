@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.9.9 - 2026-10-24
 
 - **The help is laid out for a person.** Pin maelys-cli v0.10.0 (from
   v0.7.0), still ABI 1:
