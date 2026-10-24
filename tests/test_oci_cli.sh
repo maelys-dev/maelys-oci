@@ -51,10 +51,13 @@ run describe-pull "$oci" describe pull --json --compact
 check "pull constrains --platform to a choice and declares the token/config conflict" 'json_data "$work/out" "[o for o in data[\"commands\"][0][\"input\"][\"options\"] if o[\"long\"] == \"--platform\"][0][\"argument\"][\"choices\"]" | grep -q "linux/arm64.*linux/amd64" && json_data "$work/out" "[o for o in data[\"commands\"][0][\"input\"][\"options\"] if o[\"long\"] == \"--token-file\"][0][\"conflictsWith\"]" | grep -q "docker-config"'
 
 run help "$oci" help
-check "help names every command by its pattern and purpose" '[ "$code" = 0 ] && printf "%s" "$out" | grep -q "Materialize one manifest of an OCI layout" && printf "%s" "$out" | grep -q "help COMMAND_ID" && ! printf "%s" "$out" | grep -q "\[--store DIRECTORY\]"'
+check "help names every command by its pattern and purpose" '[ "$code" = 0 ] && printf "%s" "$out" | grep -q "Materialize one manifest of an OCI layout" && printf "%s" "$out" | grep -q "help COMMAND" && ! printf "%s" "$out" | grep -q "\[--store DIRECTORY\]"'
 
 run help-import "$oci" help import
-check "help of one command is generated from the catalog" '[ "$code" = 0 ] && printf "%s" "$out" | grep -q "import SOURCE \[--store DIRECTORY\]" && printf "%s" "$out" | grep -q "MAELYS_OCI_STORE"'
+check "help of one command is generated from the catalog" '[ "$code" = 0 ] && printf "%s" "$out" | grep -q "import SOURCE \[options\]" && printf "%s" "$out" | grep -q "^  --store DIRECTORY" && printf "%s" "$out" | grep -q "MAELYS_OCI_STORE"'
+
+run describe-import "$oci" describe import --json --compact
+check "describe keeps the whole usage that help folds into [options]" 'json_data "$work/out" "data[\"commands\"][0][\"usage\"]" | grep -q "^import SOURCE \[--store DIRECTORY\] .*\[--apply\]$"'
 
 run help-flag "$oci" import --help --json --compact
 check "COMMAND --help answers as help and names the command asked" '[ "$code" = 0 ] && [ "$(python3 -c "import json,sys; d=json.load(open(sys.argv[1])); print(d[\"command\"], d[\"data\"][\"commands\"])" "$work/out")" = "help ['"'"'import'"'"']" ]'
