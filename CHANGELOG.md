@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased
+
+- Pin maelys-http v0.1.17 (from v0.1.16) and maelys-system v0.14.3 (from
+  v0.13.0) together, both still ABI 1. maelys-http changes neither its codec
+  nor its client; it is now built against maelys-system v0.14.3, and the
+  `maelys-http-client` pkg-config file requires `maelys-sys >= 0.14.3`, so
+  the two move as one: the libraries this product links are again built
+  against the same maelys-system. The maelys-system series concerns the
+  processes it starts (a child no longer inherits the parent's blocked
+  signals, owned process groups in `owned.h`); this product starts none
+  through it, and the file, lock and clock interfaces it uses are unchanged.
+- Adopt maelys-release v0.64.7 (from v0.64.6), which asks nothing of a
+  product.
+
 ## 0.9.9 - 2026-10-24
 
 - **The help is laid out for a person.** Pin maelys-cli v0.10.0 (from
