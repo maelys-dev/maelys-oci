@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.9.11 - 2026-10-25
 
 - Pin maelys-cli v0.12.2 (from v0.10.0), still ABI 1:
   - `--lang TAG` is a global option of every command, and `version`
