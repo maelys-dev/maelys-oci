@@ -37,4 +37,5 @@ Global options:
 - `--verbose`: Add the details of the run on stderr in text mode; silent in JSON.
 - `--pager auto|always|never`: Page the text rendering when stdout is a terminal; never in a pipe, in JSON or under --non-interactive.
 - `--field NAME`: Render one top-level member of data instead of the whole result, by the text or jsonl rendering rules.
+- `--lang TAG`: Language of the human text.
 - `--help`: Show the help of the selected command.

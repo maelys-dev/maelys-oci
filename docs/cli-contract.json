@@ -86,6 +86,9 @@
               "framework": {
                 "type": "string"
               },
+              "lang": {
+                "type": "string"
+              },
               "product": {
                 "type": "string"
               },
@@ -102,7 +105,8 @@
               "version",
               "contract",
               "cliApi",
-              "framework"
+              "framework",
+              "lang"
             ],
             "type": "object"
           },
@@ -2281,6 +2285,19 @@
           "required": false,
           "requires": [],
           "summary": "Render one top-level member of data instead of the whole result, by the text or jsonl rendering rules."
+        },
+        {
+          "argument": {
+            "name": "TAG",
+            "pattern": "^[A-Za-z]{2,3}(-[A-Za-z]{4})?(-([A-Za-z]{2}|[0-9]{3}))?$",
+            "type": "string"
+          },
+          "conflictsWith": [],
+          "long": "--lang",
+          "repeatable": false,
+          "required": false,
+          "requires": [],
+          "summary": "Language of the human text."
         },
         {
           "conflictsWith": [],
